@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Calendar as CalendarIcon, Clock, MapPin, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Calendar, dateFnsLocalizer, Views, View } from 'react-big-calendar';
 import format from 'date-fns/format';
@@ -38,6 +38,70 @@ const messagesConfig = {
   event: 'Evento',
   noEventsInRange: 'Não há agendamentos neste período.',
   showMore: (total: number) => `+ mais ${total}`
+};
+
+const CustomToolbar = (toolbar: any) => {
+  const goToBack = () => {
+    toolbar.onNavigate('PREV');
+  };
+
+  const goToNext = () => {
+    toolbar.onNavigate('NEXT');
+  };
+
+  const goToCurrent = () => {
+    toolbar.onNavigate('TODAY');
+  };
+
+  const label = () => {
+    const date = format(toolbar.date, 'MMMM yyyy', { locale: ptBR });
+    return <span className="text-lg font-semibold text-white capitalize">{date}</span>;
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={goToCurrent}
+          className="px-4 py-2 text-sm font-medium rounded-md bg-[#1A1333] hover:bg-[#2D214F] text-[#E2D9F3] transition-colors"
+        >
+          Hoje
+        </button>
+        <div className="flex items-center bg-[#1A1333] rounded-md overflow-hidden">
+          <button
+            onClick={goToBack}
+            className="p-2 hover:bg-[#2D214F] text-[#E2D9F3] transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={goToNext}
+            className="p-2 hover:bg-[#2D214F] text-[#E2D9F3] transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+      <div>
+        {label()}
+      </div>
+      <div className="flex items-center gap-1 bg-[#1A1333] p-1 rounded-lg">
+        {['month', 'week', 'day', 'agenda'].map((viewName) => (
+          <button
+            key={viewName}
+            onClick={() => toolbar.onView(viewName)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              toolbar.view === viewName
+                ? 'bg-violet-600 text-white shadow-sm'
+                : 'text-[#9B8FC0] hover:text-[#E2D9F3] hover:bg-[#2D214F]'
+            }`}
+          >
+            {messagesConfig[viewName as keyof typeof messagesConfig]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 interface Appointment {
@@ -155,38 +219,31 @@ export function DashboardCalendar() {
           <style dangerouslySetInnerHTML={{__html: `
             .rbc-calendar {
               min-height: 700px;
-              color: white;
-            }
-            .rbc-toolbar button {
-              color: white;
-              border-color: #2D214F;
-              background: #0B0914;
-            }
-            .rbc-toolbar button:active, .rbc-toolbar button.rbc-active {
-              background: #2D214F;
-              color: white;
-              border-color: #2D214F;
-            }
-            .rbc-toolbar button:hover {
-              background: #1A1333;
-              color: white;
+              color: #E2D9F3;
+              font-family: inherit;
             }
             .rbc-header {
-              padding: 10px 0;
+              padding: 12px 0;
               border-bottom: 1px solid #2D214F;
               border-left: 1px solid #2D214F;
+              background-color: #130E20;
               color: #9B8FC0;
               font-weight: 500;
+              text-transform: capitalize;
             }
-            .rbc-month-view, .rbc-time-view, .rbc-agenda-view {
-              border-color: #2D214F;
-              background: #0B0914;
-              border-radius: 8px;
-            }
-            .rbc-day-bg {
+            .rbc-header + .rbc-header {
               border-left: 1px solid #2D214F;
             }
-            .rbc-month-row {
+            .rbc-month-view, .rbc-time-view, .rbc-agenda-view {
+              border: 1px solid #2D214F;
+              background: #0B0914;
+              border-radius: 12px;
+              overflow: hidden;
+            }
+            .rbc-day-bg + .rbc-day-bg {
+              border-left: 1px solid #2D214F;
+            }
+            .rbc-month-row + .rbc-month-row {
               border-top: 1px solid #2D214F;
             }
             .rbc-time-content {
@@ -196,28 +253,67 @@ export function DashboardCalendar() {
               border-left: 1px solid #2D214F;
             }
             .rbc-time-slot {
-              border-top: 1px solid #2D214F;
+              border-top: 1px dotted #2D214F;
             }
             .rbc-time-gutter .rbc-time-slot {
-              color: #5B4F81;
+              color: #9B8FC0;
+              border-top: none;
+              font-size: 0.8rem;
+              padding-right: 8px;
             }
             .rbc-timeslot-group {
               border-bottom: 1px solid #2D214F;
             }
             .rbc-today {
-              background-color: rgba(139, 92, 246, 0.05);
+              background-color: rgba(139, 92, 246, 0.08);
             }
             .rbc-off-range-bg {
               background-color: #050409;
             }
             .rbc-date-cell {
-              padding-right: 5px;
+              padding: 8px;
+              font-weight: 500;
+              text-align: right;
             }
             .rbc-event {
-              padding: 2px 5px;
+              padding: 4px 8px;
+              border-radius: 6px;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.2);
             }
-            .rbc-btn-group {
-              margin-bottom: 10px;
+            .rbc-event.rbc-selected {
+              background-color: #8B5CF6 !important;
+            }
+            .rbc-current-time-indicator {
+              background-color: #8B5CF6;
+              height: 2px;
+            }
+            .rbc-current-time-indicator::before {
+              content: '';
+              display: block;
+              width: 8px;
+              height: 8px;
+              border-radius: 50%;
+              background-color: #8B5CF6;
+              position: absolute;
+              left: -4px;
+              top: -3px;
+            }
+            .rbc-agenda-view table.rbc-agenda-table tbody > tr > td + td {
+              border-left: 1px solid #2D214F;
+            }
+            .rbc-agenda-view table.rbc-agenda-table {
+              border: none;
+            }
+            .rbc-agenda-view table.rbc-agenda-table tbody > tr + tr {
+              border-top: 1px solid #2D214F;
+            }
+            .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+              border-bottom: 1px solid #2D214F;
+              padding: 12px;
+              text-align: left;
+            }
+            .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+              padding: 12px;
             }
           `}} />
           {isFetching ? (
@@ -225,21 +321,69 @@ export function DashboardCalendar() {
                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
             </div>
           ) : (
-            <Calendar
-              localizer={localizer}
-              events={events}
-              startAccessor="start"
-              endAccessor="end"
-              style={{ height: 700 }}
-              messages={messagesConfig}
-              culture="pt-BR"
-              eventPropGetter={eventStyleGetter}
-              view={view}
-              onView={(newView) => setView(newView)}
-              onSelectEvent={handleSelectEvent}
-              min={new Date(0, 0, 0, 6, 0, 0)} // Start at 6 AM
-              max={new Date(0, 0, 0, 22, 0, 0)} // End at 10 PM
-            />
+            <div className="space-y-4">
+              <Calendar
+                localizer={localizer}
+                events={events}
+                startAccessor="start"
+                endAccessor="end"
+                style={{ height: 700 }}
+                messages={messagesConfig}
+                culture="pt-BR"
+                eventPropGetter={eventStyleGetter}
+                view={view}
+                onView={(newView) => setView(newView)}
+                onSelectEvent={handleSelectEvent}
+                min={new Date(0, 0, 0, 6, 0, 0)} // Start at 6 AM
+                max={new Date(0, 0, 0, 22, 0, 0)} // End at 10 PM
+                components={{
+                  toolbar: CustomToolbar
+                }}
+              />
+              <div className="flex justify-start sm:justify-end items-center gap-4 pt-4 border-t border-[#2D214F] text-sm font-medium">
+                <span className="text-[#5B4F81] mr-2">Legenda:</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#10B981]/10 border border-[#10B981]/20 rounded-md transition-all duration-300">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
+                  <span className="text-[#10B981] flex items-center">
+                    Confirmado (
+                    <div className="relative inline-flex items-center justify-center min-w-[12px] h-[20px] mx-1">
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.span
+                          key={events.filter(e => e.isConfirmed).length}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {events.filter(e => e.isConfirmed).length}
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
+                    )
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F59E0B]/10 border border-[#F59E0B]/20 rounded-md transition-all duration-300">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+                  <span className="text-[#F59E0B] flex items-center">
+                    Pendente (
+                    <div className="relative inline-flex items-center justify-center min-w-[12px] h-[20px] mx-1">
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.span
+                          key={events.filter(e => !e.isConfirmed).length}
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {events.filter(e => !e.isConfirmed).length}
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
+                    )
+                  </span>
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

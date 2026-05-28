@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check, CheckCircle2, XCircle } from 'lucide-react';
@@ -68,6 +68,14 @@ export function DashboardHome() {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
 
+  const appointmentsRef = useRef<Appointment[]>([]);
+
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   const fetchServices = async () => {
     try {
       const res = await fetch('/api/services', { headers: getAuthHeaders() });
@@ -77,17 +85,42 @@ export function DashboardHome() {
     }
   };
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (isBackground = false) => {
     try {
-      // Endpoint to implement later in backend or mock
       const res = await fetch('/api/appointments', { headers: getAuthHeaders() });
       if (res.ok) {
-         setAppointments(await res.json());
+         const data = await res.json();
+         if (isBackground && appointmentsRef.current.length > 0) {
+            const existingIds = new Set(appointmentsRef.current.map(a => a.id));
+            const newAppointments = data.filter((a: Appointment) => !existingIds.has(a.id));
+            
+            if (newAppointments.length > 0) {
+              // Play sound
+              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+              audio.play().catch(e => console.log('Audio error:', e));
+
+              // Show native notification if allowed
+              if (Notification.permission === 'granted') {
+                newAppointments.forEach((apt: Appointment) => {
+                   new Notification('Novo agendamento recebido!', {
+                     body: `${apt.clientName} agendou um novo horário.`,
+                     icon: '/favicon.ico'
+                   });
+                });
+              } else {
+                newAppointments.forEach((apt: Appointment) => {
+                   toast.success(`Novo agendamento de ${apt.clientName}!`);
+                });
+              }
+            }
+         }
+         setAppointments(data);
+         appointmentsRef.current = data;
       }
     } catch(err) {
       console.error(err);
     } finally {
-      setIsFetchingAppointments(false);
+      if (!isBackground) setIsFetchingAppointments(false);
     }
   };
 
@@ -96,6 +129,13 @@ export function DashboardHome() {
     setCurrentSlug(currentUser.slug);
     fetchServices();
     fetchAppointments();
+    
+    // Poll for new appointments
+    const interval = setInterval(() => {
+      fetchAppointments(true);
+    }, 15000);
+    
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   const handleSaveService = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -388,6 +428,12 @@ export function DashboardHome() {
           <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
+          {currentSlug && (
+             <Button className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
+               <Plus className="w-4 h-4 mr-2" />
+               Agendar Agora
+             </Button>
+          )}
           <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
             <RefreshCcw className="w-4 h-4 mr-2" />
             Sincronizar
@@ -398,7 +444,7 @@ export function DashboardHome() {
                 toast.success("Link copiado!");
              }}>
                <ExternalLink className="w-4 h-4 mr-2" />
-               Copiar Meu Link
+               Copiar
              </Button>
           )}
         </div>
