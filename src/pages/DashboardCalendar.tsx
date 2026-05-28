@@ -221,18 +221,7 @@ export function DashboardCalendar() {
               min-height: 700px;
               color: #E2D9F3;
               font-family: inherit;
-            }
-            .rbc-header {
-              padding: 12px 0;
-              border-bottom: 1px solid #2D214F;
-              border-left: 1px solid #2D214F;
-              background-color: #130E20;
-              color: #9B8FC0;
-              font-weight: 500;
-              text-transform: capitalize;
-            }
-            .rbc-header + .rbc-header {
-              border-left: 1px solid #2D214F;
+              border: none;
             }
             .rbc-month-view, .rbc-time-view, .rbc-agenda-view {
               border: 1px solid #2D214F;
@@ -240,6 +229,27 @@ export function DashboardCalendar() {
               border-radius: 12px;
               overflow: hidden;
             }
+            /* Headers */
+            .rbc-header {
+              padding: 16px 8px;
+              border-bottom: 1px solid #2D214F;
+              background-color: #130E20;
+              color: #9B8FC0;
+              font-weight: 600;
+              font-size: 0.9rem;
+              text-transform: capitalize;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .rbc-header + .rbc-header {
+              border-left: 1px solid #2D214F;
+            }
+            .rbc-header.rbc-today {
+              color: #8B5CF6;
+              background-color: rgba(139, 92, 246, 0.05);
+            }
+            /* Grid Lines & Borders */
             .rbc-day-bg + .rbc-day-bg {
               border-left: 1px solid #2D214F;
             }
@@ -252,68 +262,134 @@ export function DashboardCalendar() {
             .rbc-time-header-content {
               border-left: 1px solid #2D214F;
             }
-            .rbc-time-slot {
-              border-top: 1px dotted #2D214F;
-            }
-            .rbc-time-gutter .rbc-time-slot {
-              color: #9B8FC0;
-              border-top: none;
-              font-size: 0.8rem;
-              padding-right: 8px;
+            .rbc-time-content > * + * > * {
+              border-left: 1px solid #2D214F;
             }
             .rbc-timeslot-group {
               border-bottom: 1px solid #2D214F;
+              min-height: 60px;
             }
+            .rbc-time-slot {
+              /* subtle inner divisions */
+            }
+            /* Today & Other states */
             .rbc-today {
-              background-color: rgba(139, 92, 246, 0.08);
+              background-color: rgba(139, 92, 246, 0.05);
             }
             .rbc-off-range-bg {
               background-color: #050409;
             }
-            .rbc-date-cell {
-              padding: 8px;
-              font-weight: 500;
-              text-align: right;
+            /* Day/Week Gutter */
+            .rbc-time-gutter {
+              background-color: #130E20;
             }
+            .rbc-time-gutter .rbc-timeslot-group {
+              border-bottom: 1px solid transparent; /* Hide line in gutter */
+            }
+            .rbc-time-gutter .rbc-time-slot {
+              color: #6C5E96;
+              font-size: 0.75rem;
+              padding-right: 12px;
+              display: flex;
+              align-items: center;
+              justify-content: flex-end;
+              border: none;
+            }
+            .rbc-allday-cell {
+              display: none;
+            }
+            /* Events */
             .rbc-event {
-              padding: 4px 8px;
-              border-radius: 6px;
-              box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+              padding: 6px 10px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+              border: 1px solid rgba(255,255,255,0.1) !important;
+              transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+            }
+            .rbc-event:hover {
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+              z-index: 10 !important;
             }
             .rbc-event.rbc-selected {
-              background-color: #8B5CF6 !important;
+              background-color: #7C3AED !important;
+              border-color: #8B5CF6 !important;
             }
+            .rbc-event-content {
+              font-size: 0.85rem;
+              font-weight: 500;
+              line-height: 1.3;
+            }
+            /* Event Labels in Month View */
+            .rbc-date-cell {
+              padding: 8px 12px;
+              font-weight: 600;
+              text-align: right;
+              font-size: 0.9rem;
+              color: #9B8FC0;
+            }
+            .rbc-date-cell.rbc-now {
+              color: #8B5CF6;
+            }
+            /* Current Time Indicator */
             .rbc-current-time-indicator {
-              background-color: #8B5CF6;
+              background-color: #EC4899;
               height: 2px;
+              z-index: 3;
             }
             .rbc-current-time-indicator::before {
               content: '';
               display: block;
-              width: 8px;
-              height: 8px;
+              width: 10px;
+              height: 10px;
               border-radius: 50%;
-              background-color: #8B5CF6;
+              background-color: #EC4899;
               position: absolute;
-              left: -4px;
-              top: -3px;
+              left: -5px;
+              top: -4px;
+            }
+            /* Agenda View */
+            .rbc-agenda-view {
+              background: #130E20;
+            }
+            .rbc-agenda-view table.rbc-agenda-table {
+              border: none;
+              border-collapse: separate;
+              border-spacing: 0;
+            }
+            .rbc-agenda-view table.rbc-agenda-table tbody > tr {
+              transition: background-color 0.2s;
+            }
+            .rbc-agenda-view table.rbc-agenda-table tbody > tr:hover {
+              background-color: rgba(139, 92, 246, 0.05);
             }
             .rbc-agenda-view table.rbc-agenda-table tbody > tr > td + td {
               border-left: 1px solid #2D214F;
             }
-            .rbc-agenda-view table.rbc-agenda-table {
-              border: none;
-            }
-            .rbc-agenda-view table.rbc-agenda-table tbody > tr + tr {
+            .rbc-agenda-view table.rbc-agenda-table tbody > tr + tr > td {
               border-top: 1px solid #2D214F;
             }
             .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
-              border-bottom: 1px solid #2D214F;
-              padding: 12px;
+              border-bottom: 2px solid #2D214F;
+              padding: 16px 12px;
               text-align: left;
+              font-weight: 600;
+              color: #E2D9F3;
+              background-color: #1A1333;
             }
             .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
-              padding: 12px;
+              padding: 16px 12px;
+              color: #E2D9F3;
+            }
+            .rbc-agenda-date-cell {
+              font-weight: 600;
+              color: #9B8FC0;
+            }
+            .rbc-agenda-time-cell {
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              font-size: 0.85rem;
+              color: #8B5CF6;
+              font-weight: 500;
             }
           `}} />
           {isFetching ? (
