@@ -1,0 +1,159 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+interface AuthContextType {
+  currentUser: any | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  updateUser: (data: any) => Promise<boolean>;
+  getAuthHeaders: () => { Authorization: string };
+}
+
+const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  loading: true,
+  login: async () => false,
+  register: async () => false,
+  logout: () => {},
+  updateUser: async () => false,
+  getAuthHeaders: () => ({ Authorization: '' }),
+});
+
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('syncou_token');
+    return token ? { Authorization: `Bearer ${token}` } : { Authorization: '' };
+  };
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem('syncou_token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/users/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const user = await res.json();
+          setCurrentUser(user);
+        } else {
+          localStorage.removeItem('syncou_token');
+        }
+      } catch (err) {
+        console.error('Failed to restore session', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        toast.error(data.error || 'Erro no login');
+        return false;
+      }
+      
+      localStorage.setItem('syncou_token', data.token);
+      setCurrentUser(data.user);
+      // Fetch full profile info
+      const profileRes = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${data.token}` }
+      });
+      if (profileRes.ok) {
+        setCurrentUser(await profileRes.json());
+      }
+      return true;
+    } catch (err) {
+      toast.error('Erro de conexão.');
+      return false;
+    }
+  };
+
+  const register = async (email: string, password: string) => {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        toast.error(data.error || 'Erro no registro');
+        return false;
+      }
+      
+      localStorage.setItem('syncou_token', data.token);
+      setCurrentUser(data.user);
+      
+      // Fetch full profile info
+      const profileRes = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${data.token}` }
+      });
+      if (profileRes.ok) {
+        setCurrentUser(await profileRes.json());
+      }
+      return true;
+    } catch (err) {
+      toast.error('Erro de conexão.');
+      return false;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('syncou_token');
+    setCurrentUser(null);
+    toast.success('Desconectado com sucesso');
+  };
+
+  const updateUser = async (data: any) => {
+    try {
+      const res = await fetch('/api/users/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(data)
+      });
+      const resData = await res.json();
+      
+      if (!res.ok) {
+        toast.error(resData.error || 'Erro ao atualizar dados');
+        return false;
+      }
+      
+      setCurrentUser((prev: any) => ({ ...prev, ...data }));
+      return true;
+    } catch (err) {
+      toast.error('Erro de conexão.');
+      return false;
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ currentUser, loading, login, register, logout, updateUser, getAuthHeaders }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
