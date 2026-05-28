@@ -59,7 +59,7 @@ if (process.env.PGHOST && process.env.PGPASSWORD) {
   poolConfig.password = process.env.PGPASSWORD;
   poolConfig.database = process.env.PGDATABASE;
   
-  if (!process.env.PGHOST.includes('railway.internal') && !process.env.PGHOST.includes('localhost')) {
+  if (!process.env.PGHOST.includes('railway.internal') && !process.env.PGHOST.includes('localhost') && !process.env.PGHOST.includes('127.0.0.1')) {
     poolConfig.ssl = { rejectUnauthorized: false };
   }
 } else if (dbUrl) {
@@ -389,6 +389,62 @@ app.post('/api/users/test-calendar', authenticateToken, async (req: any, res: an
   }
 });
 
+app.get('/api/test-db-info', async (req, res) => {
+  try {
+    const r = await pool.query("SELECT * FROM appointments ORDER BY created_at DESC LIMIT 5");
+    res.json(r.rows);
+  } catch(e) {
+    res.status(500).json({error: e.message});
+  }
+});
+
+app.post('/api/test-book-sync', authenticateToken, async (req: any, res: any) => {
+  try {
+    const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
+    const googleAccessToken = providerRes.rows[0]?.google_access_token;
+    
+    if (!googleAccessToken) {
+      return res.status(400).json({ error: 'Nenhum token do Google encontrado' });
+    }
+    
+    const startAt = Date.now() + 86400000;
+    const endAt = startAt + 1800000;
+    
+    const clientEmail = ""; // Represents empty optional email
+
+    const event = {
+        summary: `Agendamento: Eduardo`,
+        description: `Cliente: Eduardo\nEmail: N/A\nWhatsApp: N/A\nServiços: Teste`,
+        start: {
+          dateTime: new Date(Number(startAt)).toISOString(),
+        },
+        end: {
+          dateTime: new Date(Number(endAt)).toISOString(),
+        },
+        ...((clientEmail && clientEmail.includes('@')) ? { attendees: [{ email: clientEmail }] } : {})
+    };
+
+    const gCalRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${googleAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    });
+
+    if (!gCalRes.ok) {
+        const errText = await gCalRes.text();
+        console.error('Failed to create GCal test event:', errText);
+        return res.status(500).json({ error: 'Falha do GCal', details: errText, payload_sent: event });
+    }
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
   try {
     const data = req.body;
@@ -593,7 +649,7 @@ app.post('/api/provider/:slug/book', async (req, res) => {
           end: {
             dateTime: new Date(Number(endAt)).toISOString(),
           },
-          attendees: clientEmail ? [{ email: clientEmail }] : [],
+          ...((clientEmail && clientEmail.includes('@')) ? { attendees: [{ email: clientEmail }] } : {})
         };
 
         const gCalRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
