@@ -76,13 +76,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       localStorage.setItem('syncou_token', data.token);
-      setCurrentUser(data.user);
       // Fetch full profile info
       const profileRes = await fetch('/api/users/me', {
         headers: { Authorization: `Bearer ${data.token}` }
       });
       if (profileRes.ok) {
         setCurrentUser(await profileRes.json());
+      } else {
+        setCurrentUser(data.user);
       }
       return true;
     } catch (err) {
@@ -106,7 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       localStorage.setItem('syncou_token', data.token);
-      setCurrentUser(data.user);
       
       // Fetch full profile info
       const profileRes = await fetch('/api/users/me', {
@@ -114,6 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (profileRes.ok) {
         setCurrentUser(await profileRes.json());
+      } else {
+        setCurrentUser(data.user);
       }
       return true;
     } catch (err) {
@@ -137,13 +139,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       localStorage.setItem('syncou_token', data.token);
-      setCurrentUser(data.user);
       
       const profileRes = await fetch('/api/users/me', {
         headers: { Authorization: `Bearer ${data.token}` }
       });
       if (profileRes.ok) {
         setCurrentUser(await profileRes.json());
+      } else {
+        setCurrentUser(data.user);
       }
       return true;
     } catch (err) {
