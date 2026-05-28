@@ -104,8 +104,8 @@ export function ProviderPage() {
     if (slug) fetchProvider();
   }, [slug]);
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Localizando profissional...</div>;
-  if (!provider) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white font-bold text-xl">Profissional não encontrado</div>;
+  if (loading) return <div className="min-h-screen bg-[#0B0914] flex items-center justify-center text-[#9B8FC0]">Localizando profissional...</div>;
+  if (!provider) return <div className="min-h-screen bg-[#0B0914] flex items-center justify-center text-white font-bold text-xl">Profissional não encontrado</div>;
 
   const toggleService = (id: string) => {
     const next = new Set(selectedServices);
@@ -241,8 +241,8 @@ export function ProviderPage() {
 
   if (!provider) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFDFC]">
-        <div className="text-zinc-500 font-medium">Provider não encontrado...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0B0914]">
+        <div className="text-[#9B8FC0] font-medium">Provider não encontrado...</div>
       </div>
     )
   }
