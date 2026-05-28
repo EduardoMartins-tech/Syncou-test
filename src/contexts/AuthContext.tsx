@@ -5,6 +5,7 @@ interface AuthContextType {
   currentUser: any | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: (email: string, displayName: string, googleToken: string) => Promise<boolean>;
   register: (email: string, password: string, code: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: any) => Promise<boolean>;
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   loading: true,
   login: async () => false,
+  loginWithGoogle: async () => false,
   register: async () => false,
   logout: () => {},
   updateUser: async () => false,
@@ -120,6 +122,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (email: string, displayName: string, googleToken: string) => {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, displayName, googleToken })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        toast.error(data.error || 'Erro no login com Google');
+        return false;
+      }
+      
+      localStorage.setItem('syncou_token', data.token);
+      setCurrentUser(data.user);
+      
+      const profileRes = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${data.token}` }
+      });
+      if (profileRes.ok) {
+        setCurrentUser(await profileRes.json());
+      }
+      return true;
+    } catch (err) {
+      toast.error('Erro de conexão.');
+      return false;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('syncou_token');
     setCurrentUser(null);
@@ -152,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading, login, register, logout, updateUser, getAuthHeaders }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, loginWithGoogle, register, logout, updateUser, getAuthHeaders }}>
       {children}
     </AuthContext.Provider>
   );
