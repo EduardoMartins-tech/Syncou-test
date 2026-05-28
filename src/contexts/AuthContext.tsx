@@ -5,7 +5,7 @@ interface AuthContextType {
   currentUser: any | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  loginWithGoogle: (email: string, displayName: string, googleToken: string) => Promise<boolean>;
+  loginWithGoogle: (email: string, displayName: string) => Promise<boolean>;
   register: (email: string, password: string, code: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (data: any) => Promise<boolean>;
@@ -124,12 +124,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async (email: string, displayName: string, googleToken: string) => {
+  const loginWithGoogle = async (email: string, displayName: string) => {
     try {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, displayName, googleToken })
+        body: JSON.stringify({ email, displayName })
       });
       const data = await res.json();
       

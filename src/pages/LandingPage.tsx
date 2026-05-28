@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Share2, CalendarDays, Settings, Mail, Lock, Loader2, XCircle, Check } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { toast } from 'sonner';
-import { googleSignInForCalendar } from '../lib/firebase';
+import { googleSignInBasic } from '../lib/firebase';
 import { 
   Dialog, 
   DialogContent, 
@@ -37,13 +37,12 @@ export function LandingPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSubmitting(true);
     try {
-      const result = await googleSignInForCalendar();
+      const result = await googleSignInBasic();
       if (result) {
-        const { user, accessToken } = result;
+        const { user } = result;
         const success = await loginWithGoogle(
           user.email || '',
-          user.displayName || '',
-          accessToken
+          user.displayName || ''
         );
         if (success) {
           toast.success('Login efetuado com sucesso!');

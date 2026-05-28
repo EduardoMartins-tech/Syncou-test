@@ -227,7 +227,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
 
 app.post('/api/auth/google', async (req, res) => {
   try {
-    const { email, displayName, googleToken } = req.body;
+    const { email, displayName } = req.body;
     if (!email) return res.status(400).json({ error: 'Email não encontrado' });
     
     // Check if user exists
@@ -235,16 +235,14 @@ app.post('/api/auth/google', async (req, res) => {
     let id;
     if (existing.rows.length > 0) {
       id = existing.rows[0].id;
-      // Update the google_access_token if needed
-      await pool.query('UPDATE users SET google_access_token = $1 WHERE id = $2', [googleToken, id]);
     } else {
       id = generateId();
       const workingDays = JSON.stringify(['1','2','3','4','5']);
       const dpName = displayName || email.split('@')[0];
       const placeholderHash = await bcrypt.hash(generateId(), 10); // Random impossible password
       await pool.query(
-        'INSERT INTO users (id, email, password_hash, display_name, role, working_days, working_hours_start, working_hours_end, google_access_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-        [id, email, placeholderHash, dpName, 'provider', workingDays, '09:00', '18:00', googleToken]
+        'INSERT INTO users (id, email, password_hash, display_name, role, working_days, working_hours_start, working_hours_end) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [id, email, placeholderHash, dpName, 'provider', workingDays, '09:00', '18:00']
       );
     }
     
