@@ -348,6 +348,47 @@ app.post('/api/users/google-token', authenticateToken, async (req: any, res: any
   }
 });
 
+app.post('/api/users/test-calendar', authenticateToken, async (req: any, res: any) => {
+  try {
+    const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
+    const googleAccessToken = providerRes.rows[0]?.google_access_token;
+    
+    if (!googleAccessToken) {
+      return res.status(400).json({ error: 'Nenhum token do Google encontrado' });
+    }
+    
+    const event = {
+      summary: `Testando Syncou`,
+      description: `Este é um evento de teste criado pelo Syncou para validar sua sincronização com o Google Calendar.`,
+      start: {
+        dateTime: new Date().toISOString(),
+      },
+      end: {
+        dateTime: new Date(Date.now() + 30 * 60000).toISOString(),
+      },
+    };
+
+    const gCalRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${googleAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    });
+
+    if (!gCalRes.ok) {
+        const errText = await gCalRes.text();
+        console.error('Failed to create GCal test event:', errText);
+        return res.status(500).json({ error: 'Falha ao comunicar com o Google (seu acesso pode estar expirado ou revogado).' });
+    }
+    
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
   try {
     const data = req.body;

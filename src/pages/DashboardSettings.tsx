@@ -73,6 +73,26 @@ export function DashboardSettings() {
     }
   };
 
+  const handleTestGoogleCalendar = async () => {
+    try {
+      const loadingToast = toast.loading("Enviando evento de teste...");
+      const res = await fetch('/api/users/test-calendar', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      toast.dismiss(loadingToast);
+      
+      if (res.ok) {
+        toast.success("✅ Evento de teste criado! Verifique seu Google Calendar.");
+      } else {
+        const errorData = await res.json();
+        toast.error(`❌ Erro ao sincronizar: ${errorData.error}`);
+      }
+    } catch (err) {
+      toast.error("Erro interno ao testar conexão.");
+    }
+  };
+
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<SettingsForm>({
     resolver: zodResolver(slugSchema),
     defaultValues: {
@@ -614,18 +634,30 @@ export function DashboardSettings() {
                   <h4 className="font-medium text-slate-200 mb-1">Google Calendar</h4>
                   <p className="text-sm text-slate-500">Agende e sincronize eventos automaticamente.</p>
                </div>
-               <Button
-                 type="button"
-                 onClick={handleConnectGoogleCalendar}
-                 disabled={googleCalendarConnected}
-                 className={`mt-4 sm:mt-0 ${googleCalendarConnected ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' : 'bg-white text-slate-900 hover:bg-slate-200'} transition-all font-semibold shadow-sm`}
-               >
-                 {googleCalendarConnected ? (
-                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Conectado</>
-                 ) : (
-                    <><CalendarIcon className="w-4 h-4 mr-2" /> Conectar</>
+               <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
+                 {googleCalendarConnected && (
+                   <Button
+                     type="button"
+                     variant="outline"
+                     onClick={handleTestGoogleCalendar}
+                     className="bg-transparent text-slate-300 border-slate-700 hover:bg-slate-800 transition-all font-semibold shadow-sm"
+                   >
+                     Testar Sincronização (F5)
+                   </Button>
                  )}
-               </Button>
+                 <Button
+                   type="button"
+                   onClick={handleConnectGoogleCalendar}
+                   disabled={googleCalendarConnected}
+                   className={`${googleCalendarConnected ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 cursor-default' : 'bg-white text-slate-900 hover:bg-slate-200'} transition-all font-semibold shadow-sm`}
+                 >
+                   {googleCalendarConnected ? (
+                      <><CheckCircle2 className="w-4 h-4 mr-2" /> Conectado</>
+                   ) : (
+                      <><CalendarIcon className="w-4 h-4 mr-2" /> Conectar</>
+                   )}
+                 </Button>
+               </div>
              </div>
           </CardContent>
         </Card>
