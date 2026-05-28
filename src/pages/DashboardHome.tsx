@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { syncWithGoogleCalendar } from '../lib/calendar';
+import { googleSignInForCalendar } from '../lib/firebase';
 
 interface Service {
   id: string;
@@ -287,9 +288,9 @@ export function DashboardHome() {
     }
   };
 
-  const handleSyncCalendar = async () => {
+  const handleSyncCalendar = async (isRetry = false) => {
     try {
-      const loadingToast = toast.loading('Sincronizando com o Google Calendar...');
+      const loadingToast = toast.loading(isRetry ? 'Re-sincronizando...' : 'Sincronizando com o Google Calendar...');
       const res = await fetch('/api/appointments/sync-all', {
         method: 'POST',
         headers: getAuthHeaders()
@@ -302,9 +303,30 @@ export function DashboardHome() {
           toast.success(`✅ ${data.synced} agendamento(s) sincronizado(s) com sucesso na sua agenda do Google!`);
         } else if (data.errors > 0) {
           console.error("GCal Sync Error:", data.lastError);
-          const isAuthError = String(data.lastError).includes('Invalid Credentials') || String(data.lastError).includes('401');
-          if (isAuthError) {
-             toast.error(`❌ O acesso ao Google expirou (Token inválido). Por favor, vá em "Minha Página" (Configurações), reconecte sua conta do Google Calendar e depois clique no botão "Sincronizar" aqui na Dashboard.`, { duration: 8000 });
+          const isAuthError = String(data.lastError).includes('Invalid Credentials') || String(data.lastError).includes('401') || String(data.lastError).includes('UNAUTHENTICATED');
+          if (isAuthError && !isRetry) {
+             toast.info("Acesso ao Google expirou. Reconectando...");
+             try {
+                const result = await googleSignInForCalendar();
+                if (result?.accessToken) {
+                   await fetch('/api/users/google-token', {
+                     method: 'POST',
+                     headers: {
+                       ...getAuthHeaders(),
+                       'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({ token: result.accessToken }),
+                   });
+                   // Retry the sync automatically
+                   handleSyncCalendar(true);
+                }
+             } catch(signInErr: any) {
+                if (signInErr.code !== 'auth/popup-closed-by-user') {
+                   toast.error("Falha ao reconectar. Por favor, tente novamente na aba Minha Página.");
+                }
+             }
+          } else if (isAuthError && isRetry) {
+             toast.error(`❌ O acesso ao Google ainda é falho. Verifique suas permissões no Google.`);
           } else {
              toast.error(`❌ Tentativa concluída, mas falhou em ${data.errors} agendamento(s). Erro: ${data.lastError ? String(data.lastError).substring(0, 80) : "Desconhecido"}.`, { duration: 8000 });
           }
@@ -347,7 +369,7 @@ export function DashboardHome() {
           <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={handleSyncCalendar} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
+          <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
             <RefreshCcw className="w-4 h-4 mr-2" />
             Sincronizar
           </Button>
