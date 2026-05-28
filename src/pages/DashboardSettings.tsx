@@ -87,10 +87,10 @@ export function DashboardSettings() {
         toast.success("✅ Evento de teste criado! Verifique seu Google Calendar.");
       } else {
         const errorData = await res.json();
-        toast.error(`❌ Erro ao sincronizar: ${errorData.error}`);
+        toast.error(`❌ Erro ao sincronizar: ${errorData.error}. Por favor, reconecte sua conta e use o botão "Sincronizar" na Dashboard para tentar novamente.`, { duration: 8000 });
       }
     } catch (err) {
-      toast.error("Erro interno ao testar conexão.");
+      toast.error("Erro interno ao testar conexão. Por favor, reconecte e use o botão Sincronizar na Dashboard.");
     }
   };
 

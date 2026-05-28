@@ -287,6 +287,32 @@ export function DashboardHome() {
     }
   };
 
+  const handleSyncCalendar = async () => {
+    try {
+      const loadingToast = toast.loading('Sincronizando com o Google Calendar...');
+      const res = await fetch('/api/appointments/sync-all', {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      toast.dismiss(loadingToast);
+      
+      const data = await res.json();
+      if (res.ok) {
+        if (data.synced > 0) {
+          toast.success(`✅ ${data.synced} agendamento(s) sincronizado(s) com sucesso na sua agenda!`);
+        } else if (data.errors > 0) {
+          toast.error(`❌ Tentativa concluída, mas ${data.errors} erro(s) ocorreram. Reconecte sua conta nas configurações.`);
+        } else {
+          toast.info('Tudo atualizado! Nenhum agendamento pendente para sincronização, ou a integração já fez isso.');
+        }
+      } else {
+        toast.error(data.error || 'Erro ao sincronizar. Tente reconectar sua conta.');
+      }
+    } catch(err) {
+      toast.error('Erro interno de conexão. Tente novamente mais tarde.');
+    }
+  };
+
   const filteredAppointments = appointments.filter(apt => {
     // Determine standard status string
     let aptStatus = 'Pendente';
@@ -315,6 +341,10 @@ export function DashboardHome() {
           <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
+          <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={handleSyncCalendar} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
+            <RefreshCcw className="w-4 h-4 mr-2" />
+            Sincronizar
+          </Button>
           {currentSlug && (
              <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);

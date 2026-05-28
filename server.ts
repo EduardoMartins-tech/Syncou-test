@@ -410,7 +410,7 @@ app.post('/api/test-book-sync', authenticateToken, async (req: any, res: any) =>
     const startAt = Date.now() + 86400000;
     const endAt = startAt + 1800000;
     
-    const clientEmail = ""; // Represents empty optional email
+    const clientEmail: string = ""; // Represents empty optional email
 
     const event = {
         summary: `Agendamento: Eduardo`,
@@ -571,6 +571,60 @@ app.put('/api/appointments/:id', authenticateToken, async (req: any, res) => {
          );
       }
       res.json({ success: true });
+   } catch (err: any) {
+      res.status(500).json({ error: err.message });
+   }
+});
+
+app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: any) => {
+   try {
+      const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
+      const googleAccessToken = providerRes.rows[0]?.google_access_token;
+      
+      if (!googleAccessToken) {
+         return res.status(400).json({ error: 'Nenhum token do Google encontrado. Conecte sua conta primeiro.' });
+      }
+
+      const result = await pool.query(
+        'SELECT * FROM appointments WHERE provider_id = $1 AND (status IS NULL OR status = $2 OR status = $3 OR status = $4)',
+        [req.user.id, 'scheduled', 'Pendente', 'Confirmado']
+      );
+
+      let syncedCount = 0;
+      let errorCount = 0;
+
+      for (const apt of result.rows) {
+        try {
+          const services = JSON.parse(apt.services || '[]');
+          const event = {
+            summary: `Agendamento: ${apt.client_name}`,
+            description: `Cliente: ${apt.client_name}\nEmail: ${apt.client_email || 'N/A'}\nWhatsApp: ${apt.client_whatsapp || 'N/A'}\nServiços: ${(services || []).map((s: any) => s.name || s.title).join(', ')}`,
+            start: { dateTime: new Date(Number(apt.start_at)).toISOString() },
+            end: { dateTime: new Date(Number(apt.end_at)).toISOString() },
+            ...((apt.client_email && apt.client_email.includes('@')) ? { attendees: [{ email: apt.client_email }] } : {})
+          };
+
+          const gCalRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${googleAccessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+          });
+
+          if (!gCalRes.ok) {
+            console.error('Failed to create GCal event for apt', apt.id, await gCalRes.text());
+            errorCount++;
+          } else {
+            syncedCount++;
+          }
+        } catch (e) {
+          errorCount++;
+        }
+      }
+
+      res.json({ success: true, synced: syncedCount, errors: errorCount });
    } catch (err: any) {
       res.status(500).json({ error: err.message });
    }
