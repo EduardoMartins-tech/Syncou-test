@@ -592,6 +592,7 @@ app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: 
 
       let syncedCount = 0;
       let errorCount = 0;
+      let lastError = null;
 
       for (const apt of result.rows) {
         try {
@@ -614,17 +615,24 @@ app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: 
           });
 
           if (!gCalRes.ok) {
-            console.error('Failed to create GCal event for apt', apt.id, await gCalRes.text());
+            const errText = await gCalRes.text();
+            console.error('Failed to create GCal event for apt', apt.id, errText);
             errorCount++;
+            if (errorCount === 1) {
+              lastError = errText;
+            }
           } else {
             syncedCount++;
           }
-        } catch (e) {
+        } catch (e: any) {
           errorCount++;
+          if (errorCount === 1) {
+            lastError = e.message;
+          }
         }
       }
 
-      res.json({ success: true, synced: syncedCount, errors: errorCount });
+      res.json({ success: true, synced: syncedCount, errors: errorCount, lastError });
    } catch (err: any) {
       res.status(500).json({ error: err.message });
    }

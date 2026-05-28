@@ -299,11 +299,17 @@ export function DashboardHome() {
       const data = await res.json();
       if (res.ok) {
         if (data.synced > 0) {
-          toast.success(`✅ ${data.synced} agendamento(s) sincronizado(s) com sucesso na sua agenda!`);
+          toast.success(`✅ ${data.synced} agendamento(s) sincronizado(s) com sucesso na sua agenda do Google!`);
         } else if (data.errors > 0) {
-          toast.error(`❌ Tentativa concluída, mas ${data.errors} erro(s) ocorreram. Reconecte sua conta nas configurações.`);
+          console.error("GCal Sync Error:", data.lastError);
+          const isAuthError = String(data.lastError).includes('Invalid Credentials') || String(data.lastError).includes('401');
+          if (isAuthError) {
+             toast.error(`❌ O acesso ao Google expirou (Token inválido). Por favor, vá em "Minha Página" (Configurações), reconecte sua conta do Google Calendar e depois clique no botão "Sincronizar" aqui na Dashboard.`, { duration: 8000 });
+          } else {
+             toast.error(`❌ Tentativa concluída, mas falhou em ${data.errors} agendamento(s). Erro: ${data.lastError ? String(data.lastError).substring(0, 80) : "Desconhecido"}.`, { duration: 8000 });
+          }
         } else {
-          toast.info('Tudo atualizado! Nenhum agendamento pendente para sincronização, ou a integração já fez isso.');
+          toast.info('Tudo atualizado! Nenhum agendamento pendente para sincronização.');
         }
       } else {
         toast.error(data.error || 'Erro ao sincronizar. Tente reconectar sua conta.');
@@ -646,7 +652,7 @@ export function DashboardHome() {
                      <Label htmlFor="description" className="text-[#9B8FC0]">Descrição (Opcional)</Label>
                      <Input id="description" name="description" defaultValue={editingService?.description} className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" placeholder="Ex: Lavagem e finalização inclusos" />
                    </div>
-                   <div className="grid grid-cols-3 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                      <div className="space-y-2">
                        <Label htmlFor="duration" className="text-[#9B8FC0]">Duração (min)</Label>
                        <Input id="duration" name="duration" type="number" min="1" defaultValue={editingService?.duration} required className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" />
@@ -754,7 +760,7 @@ export function DashboardHome() {
             </CardDescription>
           </DialogHeader>
           <form onSubmit={handleConfirmReschedule} className="space-y-4 pt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="rescheduleDate" className="text-[#9B8FC0]">Nova Data</Label>
                 <Input
