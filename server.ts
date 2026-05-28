@@ -547,11 +547,11 @@ app.post('/api/provider/:slug/book', async (req, res) => {
           summary: `Agendamento: ${clientName}`,
           description: `Cliente: ${clientName}\nEmail: ${clientEmail || 'N/A'}\nWhatsApp: ${clientWhatsApp || 'N/A'}\nServiços: ${(services || []).map((s: any) => s.name).join(', ')}`,
           start: {
-            dateTime: startAt,
+            dateTime: new Date(Number(startAt)).toISOString(),
             timeZone: 'America/Sao_Paulo',
           },
           end: {
-            dateTime: endAt,
+            dateTime: new Date(Number(endAt)).toISOString(),
             timeZone: 'America/Sao_Paulo',
           },
           attendees: clientEmail ? [{ email: clientEmail }] : [],
