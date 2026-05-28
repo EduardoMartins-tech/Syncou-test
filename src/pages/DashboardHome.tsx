@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { syncWithGoogleCalendar } from '../lib/calendar';
 
@@ -302,15 +303,20 @@ export function DashboardHome() {
   });
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500 overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+      >
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Visão Geral</h1>
-          <p className="text-slate-400">Acompanhe seus agendamentos e gerencie seus serviços.</p>
+          <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           {currentSlug && (
-             <Button variant="outline" className="bg-slate-900 border-slate-800 text-slate-300" onClick={() => {
+             <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);
                 toast.success("Link copiado!");
              }}>
@@ -319,45 +325,60 @@ export function DashboardHome() {
              </Button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Metrics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isFetchingAppointments ? (
           <>
-            <div className="bg-slate-800 rounded-2xl h-32 animate-pulse border border-slate-700/50" />
-            <div className="bg-slate-800 rounded-2xl h-32 animate-pulse border border-slate-700/50" />
-            <div className="bg-slate-800 rounded-2xl h-32 animate-pulse border border-slate-700/50" />
+            <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
+            <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
+            <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
           </>
         ) : (
           <>
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 hover:bg-slate-800/80 transition-colors">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#130E20] p-6 rounded-2xl border border-[#2D214F] hover:border-[#4B3B7A] transition-colors shadow-sm"
+            >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-400">Total de Agendamentos</h3>
-                <TrendingUp className="w-5 h-5 text-purple-500" />
+                <h3 className="text-sm font-medium text-[#9B8FC0]">Total de Agendamentos</h3>
+                <TrendingUp className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="text-4xl font-bold text-white">{appointments.length}</div>
-            </div>
+            </motion.div>
             
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 hover:bg-slate-800/80 transition-colors">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#130E20] p-6 rounded-2xl border border-[#2D214F] hover:border-[#4B3B7A] transition-colors shadow-sm"
+            >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-400">Pendentes</h3>
-                <Clock className="w-5 h-5 text-purple-500" />
+                <h3 className="text-sm font-medium text-[#9B8FC0]">Pendentes</h3>
+                <Clock className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="text-4xl font-bold text-white">
                 {appointments.filter(a => a.status === 'scheduled' || a.status === 'Pendente' || !a.status).length}
               </div>
-            </div>
+            </motion.div>
             
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50 hover:bg-slate-800/80 transition-colors">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#130E20] p-6 rounded-2xl border border-[#2D214F] hover:border-[#4B3B7A] transition-colors shadow-sm"
+            >
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-slate-400">Confirmados</h3>
-                <CheckCircle className="w-5 h-5 text-purple-500" />
+                <h3 className="text-sm font-medium text-[#9B8FC0]">Confirmados</h3>
+                <CheckCircle className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="text-4xl font-bold text-white">
                 {appointments.filter(a => a.status === 'confirmed' || a.status === 'Confirmado').length}
               </div>
-            </div>
+            </motion.div>
           </>
         )}
       </div>
@@ -367,10 +388,10 @@ export function DashboardHome() {
         {/* Appointments Section */}
         <div className="space-y-6">
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-               <CalendarIcon className="w-5 h-5 text-purple-400" />
+             <h2 className="text-xl font-bold text-white flex items-center gap-2">
+               <CalendarIcon className="w-5 h-5 text-violet-400" />
                Agendamentos
-               <span className="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded-full">{filteredAppointments.length}</span>
+               <span className="bg-[#1A1333] text-[#E2D9F3] text-xs px-2 py-1 rounded-full">{filteredAppointments.length}</span>
              </h2>
 
              <div className="flex gap-2 w-full sm:w-auto">
@@ -378,12 +399,12 @@ export function DashboardHome() {
                  placeholder="Filtrar por nome..." 
                  value={filterName}
                  onChange={e => setFilterName(e.target.value)}
-                 className="bg-slate-900 border-slate-800 text-slate-100 h-9"
+                 className="bg-[#130E20] border-[#2D214F] text-white h-9 placeholder:text-[#5B4F81] focus-visible:ring-violet-500"
                />
                <select 
                  value={filterStatus}
                  onChange={e => setFilterStatus(e.target.value)}
-                 className="bg-slate-900 border border-slate-800 text-slate-100 rounded-md px-3 h-9 text-sm focus:outline-none focus:ring-1 focus:ring-purple-600"
+                 className="bg-[#130E20] border border-[#2D214F] text-white rounded-md px-3 h-9 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
                >
                  <option value="Todos">Todos</option>
                  <option value="Pendente">Pendentes</option>
@@ -397,24 +418,24 @@ export function DashboardHome() {
               {isFetchingAppointments ? (
                 <>
                   {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="bg-slate-900/60 border-slate-800 backdrop-blur-md">
+                    <Card key={i} className="bg-[#130E20] border-[#2D214F] shadow-sm">
                       <CardContent className="p-5">
                         <div className="flex justify-between items-start mb-4">
                           <div className="space-y-2">
-                             <div className="h-6 w-32 bg-slate-800 rounded animate-pulse" />
-                             <div className="h-4 w-24 bg-slate-800 rounded animate-pulse" />
+                             <div className="h-6 w-32 bg-[#1A1333] rounded animate-pulse" />
+                             <div className="h-4 w-24 bg-[#1A1333] rounded animate-pulse" />
                           </div>
-                          <div className="h-6 w-20 bg-slate-800 rounded-full animate-pulse" />
+                          <div className="h-6 w-20 bg-[#1A1333] rounded-full animate-pulse" />
                         </div>
-                        <div className="bg-slate-950/50 rounded-lg p-3 flex justify-between items-center mb-4 border border-slate-800/50">
-                           <div className="h-4 w-32 bg-slate-800 rounded animate-pulse" />
-                           <div className="h-4 w-16 bg-slate-800 rounded animate-pulse" />
+                        <div className="bg-[#0B0914] rounded-lg p-3 flex justify-between items-center mb-4 border border-[#2D214F]">
+                           <div className="h-4 w-32 bg-[#1A1333] rounded animate-pulse" />
+                           <div className="h-4 w-16 bg-[#1A1333] rounded animate-pulse" />
                         </div>
                         <div className="flex flex-col gap-2 mt-4">
-                          <div className="h-9 w-full bg-slate-800 rounded animate-pulse" />
+                          <div className="h-9 w-full bg-[#1A1333] rounded animate-pulse" />
                           <div className="flex gap-2">
-                            <div className="h-9 flex-1 bg-slate-800 rounded animate-pulse" />
-                            <div className="h-9 flex-1 bg-slate-800 rounded animate-pulse" />
+                            <div className="h-9 flex-1 bg-[#1A1333] rounded animate-pulse" />
+                            <div className="h-9 flex-1 bg-[#1A1333] rounded animate-pulse" />
                           </div>
                         </div>
                       </CardContent>
@@ -422,55 +443,61 @@ export function DashboardHome() {
                   ))}
                 </>
               ) : filteredAppointments.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-slate-800 rounded-xl bg-slate-900/20">
-                   <p className="text-slate-500">Nenhum agendamento encontrado.</p>
+                <div className="text-center p-8 border border-dashed border-[#2D214F] rounded-xl bg-[#130E20]">
+                   <p className="text-[#9B8FC0]">Nenhum agendamento encontrado.</p>
                    {filterName || filterStatus !== 'Todos' ? (
-                     <Button variant="link" onClick={() => { setFilterName(''); setFilterStatus('Todos'); }} className="text-purple-400 mt-2">
+                     <Button variant="link" onClick={() => { setFilterName(''); setFilterStatus('Todos'); }} className="text-violet-400 mt-2">
                        Limpar filtros
                      </Button>
                    ) : (
-                     <p className="text-sm text-slate-600 mt-2">Compartilhe seu link para receber clientes.</p>
+                     <p className="text-sm text-[#5B4F81] mt-2">Compartilhe seu link para receber clientes.</p>
                    )}
                 </div>
               ) : (
-                filteredAppointments.map(apt => (
-                  <Card key={apt.id} className="bg-slate-900/60 border-slate-800 backdrop-blur-md">
+                filteredAppointments.map((apt, index) => (
+                  <motion.div
+                    key={apt.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.1 + (index * 0.05), ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <Card className="bg-[#130E20] border-[#2D214F] shadow-sm hover:border-[#4B3B7A] transition-colors">
                     <CardContent className="p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                           <h3 className="font-bold text-slate-100 text-lg">{apt.clientName}</h3>
-                           <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
-                             <a href={`https://wa.me/${apt.clientWhatsApp?.replace(/\D/g, '') || apt.clientPhone?.replace(/\D/g, '')}`} className="hover:text-green-400 transition-colors" target="_blank" rel="noreferrer">
+                           <h3 className="font-bold text-white text-lg">{apt.clientName}</h3>
+                           <div className="flex items-center gap-2 text-sm text-[#9B8FC0] mt-1">
+                             <a href={`https://wa.me/${apt.clientWhatsApp?.replace(/\D/g, '') || apt.clientPhone?.replace(/\D/g, '')}`} className="hover:text-violet-400 transition-colors" target="_blank" rel="noreferrer">
                                {apt.clientWhatsApp || apt.clientPhone}
                              </a>
                            </div>
                         </div>
                         <div className="text-right">
                           <div className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center
-                            ${(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 
-                              (apt.status === 'confirmed' || apt.status === 'Confirmado') ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
-                              'bg-red-500/20 text-red-400 border border-red-500/30'}
+                            ${(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                              (apt.status === 'confirmed' || apt.status === 'Confirmado') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                              'bg-red-500/10 text-red-400 border border-red-500/20'}
                           `}>
                             {(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) && 'Pendente'}
                             {(apt.status === 'confirmed' || apt.status === 'Confirmado') && 'Confirmado'}
                             {(apt.status === 'cancelled' || apt.status === 'Cancelado') && 'Cancelado'}
                           </div>
                           {apt.bookingSource === 'public_link' && (
-                             <div className="text-[10px] uppercase font-bold tracking-wider text-purple-400 mt-2">
+                             <div className="text-[10px] uppercase font-bold tracking-wider text-violet-500 mt-2">
                                via syncou
                              </div>
                           )}
                         </div>
                       </div>
 
-                      <div className="bg-slate-950/50 rounded-lg p-3 text-sm flex gap-4 md:gap-0 flex-col md:flex-row justify-between md:items-center mb-4 border border-slate-800/50">
-                         <div className="flex items-center gap-2 text-slate-300">
-                           <Clock className="w-4 h-4 text-slate-500" />
+                      <div className="bg-[#0B0914] rounded-lg p-3 text-sm flex gap-4 md:gap-0 flex-col md:flex-row justify-between md:items-center mb-4 border border-[#2D214F]">
+                         <div className="flex items-center gap-2 text-[#E2D9F3]">
+                           <Clock className="w-4 h-4 text-[#5B4F81]" />
                            {new Date(apt.startAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                            {' as '}
                            {new Date(apt.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                          </div>
-                         <div className="font-mono text-purple-400 md:border-l border-slate-800 md:pl-3">
+                         <div className="font-mono text-violet-400 font-medium md:border-l border-[#2D214F] md:pl-3">
                            R$ {apt.totalPrice?.toFixed(2) || '0.00'}
                          </div>
                       </div>
@@ -481,9 +508,9 @@ export function DashboardHome() {
                             size="sm" 
                             variant="outline"
                             onClick={() => openWhatsApp(apt)} 
-                            className="flex-1 bg-slate-900 border-slate-700 text-slate-300 hover:text-green-400 hover:border-green-500/50"
+                            className="flex-1 bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:text-white hover:border-[#4B3B7A] hover:bg-[#2D214F]"
                           >
-                            <MessageSquare className="w-4 h-4 mr-2" /> WhatsApp
+                            <MessageSquare className="w-4 h-4 mr-2 text-[#9B8FC0] group-hover:text-white" /> WhatsApp
                           </Button>
                           
                           {(apt.status !== 'cancelled' && apt.status !== 'Cancelado') && (
@@ -497,7 +524,7 @@ export function DashboardHome() {
                                 setRescheduleTime(currentStart.toTimeString().slice(0, 5));
                                 setIsRescheduleModalOpen(true);
                               }} 
-                              className="flex-1 bg-slate-900 border-slate-700 text-slate-300 hover:text-purple-400 hover:border-purple-500/50"
+                              className="flex-1 bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:text-white hover:border-[#4B3B7A] hover:bg-[#2D214F]"
                             >
                               <RefreshCcw className="w-4 h-4 mr-2" /> Remarcar
                             </Button>
@@ -506,7 +533,7 @@ export function DashboardHome() {
                         
                         {(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) && (
                           <div className="flex gap-2 mt-2">
-                            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(apt.id, 'Confirmado')} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white">
+                            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(apt.id, 'Confirmado')} className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white">
                               Confirmar
                             </Button>
                             <Button 
@@ -517,7 +544,7 @@ export function DashboardHome() {
                                 setIsCancelModalOpen(true);
                               }} 
                               variant="destructive" 
-                              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                              className="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none"
                             >
                               Cancelar
                             </Button>
@@ -525,7 +552,7 @@ export function DashboardHome() {
                         )}
                         {(apt.status === 'confirmed' || apt.status === 'Confirmado') && (
                           <div className="flex gap-2 mt-2">
-                            <Button size="sm" disabled className="flex-1 bg-green-500/10 text-green-500 border-green-500/20">
+                            <Button size="sm" disabled className="flex-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                               Confirmado
                             </Button>
                             <Button 
@@ -536,7 +563,7 @@ export function DashboardHome() {
                                 setIsCancelModalOpen(true);
                               }} 
                               variant="destructive" 
-                              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                              className="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none"
                             >
                               Cancelar
                             </Button>
@@ -544,11 +571,11 @@ export function DashboardHome() {
                         )}
                         {(apt.status === 'cancelled' || apt.status === 'Cancelado') && (
                           <div className="space-y-1">
-                            <Button size="sm" disabled className="w-full bg-red-500/10 text-red-500 border-red-500/20">
+                            <Button size="sm" disabled className="w-full bg-red-500/10 text-red-400 border-red-500/20">
                               Cancelado
                             </Button>
                             {apt.cancelReason && (
-                              <p className="text-xs text-slate-500 italic mt-1 bg-slate-950 p-2 rounded">
+                              <p className="text-xs text-[#9B8FC0] italic mt-1 bg-[#0A0713] p-2 rounded-md border border-[#2D214F]">
                                 Motivo: {apt.cancelReason}
                               </p>
                             )}
@@ -557,6 +584,7 @@ export function DashboardHome() {
                       </div>
                     </CardContent>
                   </Card>
+                  </motion.div>
                 ))
               )}
            </div>
@@ -565,47 +593,50 @@ export function DashboardHome() {
         {/* Services Section */}
         <div className="space-y-6">
            <div className="flex items-center justify-between">
-             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-               <span className="w-5 h-5 rounded bg-purple-600 flex items-center justify-center text-xs">S</span>
+             <h2 className="text-xl font-bold text-white flex items-center gap-2">
+               <span className="w-6 h-6 rounded-md bg-[#8B5CF6]/20 text-violet-400 flex items-center justify-center text-xs font-semibold ring-1 ring-violet-500/30">S</span>
                Meus Serviços
              </h2>
              <Dialog open={isServiceModalOpen} onOpenChange={setIsServiceModalOpen}>
-               <DialogTrigger render={<Button onClick={() => setEditingService(null)} size="sm" className="bg-purple-600 hover:bg-purple-700 text-white" />}>
-                 <Plus className="w-4 h-4 mr-1" /> Novo
+               <DialogTrigger asChild>
+                 <Button onClick={() => setEditingService(null)} size="sm" className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white">
+                   <Plus className="w-4 h-4 mr-1" /> Novo
+                 </Button>
                </DialogTrigger>
-               <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-slate-100">
+               <DialogContent className="sm:max-w-[425px] bg-[#130E20] border-[#2D214F] text-[#E2D9F3] shadow-2xl">
                  <DialogHeader>
-                   <DialogTitle>{editingService ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
+                   <DialogTitle className="text-white text-xl">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</DialogTitle>
                  </DialogHeader>
                  <form onSubmit={handleSaveService} className="space-y-4 pt-4">
                    <div className="space-y-2">
-                     <Label htmlFor="name" className="text-slate-300">Nome do Serviço</Label>
-                     <Input id="name" name="name" defaultValue={editingService?.name} required className="bg-slate-950 border-slate-800" />
+                     <Label htmlFor="name" className="text-[#9B8FC0]">Nome do Serviço</Label>
+                     <Input id="name" name="name" defaultValue={editingService?.name} required className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" placeholder="Ex: Corte de Cabelo" />
                    </div>
                    <div className="space-y-2">
-                     <Label htmlFor="description" className="text-slate-300">Descrição</Label>
-                     <Input id="description" name="description" defaultValue={editingService?.description} className="bg-slate-950 border-slate-800" />
+                     <Label htmlFor="description" className="text-[#9B8FC0]">Descrição (Opcional)</Label>
+                     <Input id="description" name="description" defaultValue={editingService?.description} className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" placeholder="Ex: Lavagem e finalização inclusos" />
                    </div>
                    <div className="grid grid-cols-3 gap-4">
                      <div className="space-y-2">
-                       <Label htmlFor="duration" className="text-slate-300">Duração (min)</Label>
-                       <Input id="duration" name="duration" type="number" min="1" defaultValue={editingService?.duration} required className="bg-slate-950 border-slate-800" />
+                       <Label htmlFor="duration" className="text-[#9B8FC0]">Duração (min)</Label>
+                       <Input id="duration" name="duration" type="number" min="1" defaultValue={editingService?.duration} required className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" />
                      </div>
                      <div className="space-y-2">
-                       <Label htmlFor="bufferTime" className="text-slate-300">Respiro (min)</Label>
-                       <Input id="bufferTime" name="bufferTime" type="number" min="0" defaultValue={editingService?.bufferTime || 0} required className="bg-slate-950 border-slate-800" />
+                       <Label htmlFor="bufferTime" className="text-[#9B8FC0]">Respiro (min)</Label>
+                       <Input id="bufferTime" name="bufferTime" type="number" min="0" defaultValue={editingService?.bufferTime || 0} required className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" />
                      </div>
                      <div className="space-y-2">
-                       <Label htmlFor="price" className="text-slate-300">Preço (R$)</Label>
-                       <Input id="price" name="price" type="number" min="0" step="0.01" defaultValue={editingService?.price} required className="bg-slate-950 border-slate-800" />
+                       <Label htmlFor="price" className="text-[#9B8FC0]">Preço (R$)</Label>
+                       <Input id="price" name="price" type="number" min="0" step="0.01" defaultValue={editingService?.price} required className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11" />
                      </div>
                    </div>
-                   <div className="flex items-center space-x-2 pt-2">
+                   <div className="flex items-center space-x-2 pt-2 border-t border-[#2D214F] mt-4 pb-2">
                      <Switch id="active" name="active" defaultChecked={editingService ? editingService.active : true} />
-                     <Label htmlFor="active" className="text-slate-300">Serviço Ativo</Label>
+                     <Label htmlFor="active" className="text-white font-medium">Serviço Ativo</Label>
                    </div>
-                   <DialogFooter className="pt-4">
-                     <Button type="submit" className="bg-purple-600 text-white w-full">Salvar Serviço</Button>
+                   <DialogFooter className="pt-4 border-t border-[#2D214F]">
+                     <Button type="button" variant="ghost" onClick={() => setIsServiceModalOpen(false)} className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]/50">Cancelar</Button>
+                     <Button type="submit" className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white">Salvar Serviço</Button>
                    </DialogFooter>
                  </form>
                </DialogContent>
@@ -614,24 +645,24 @@ export function DashboardHome() {
 
            <div className="grid gap-4">
              {services.length === 0 ? (
-                <div className="text-center p-8 border border-dashed border-slate-800 rounded-xl bg-slate-900/20">
-                   <p className="text-slate-500">Nenhum serviço cadastrado.</p>
+                <div className="text-center p-8 border border-dashed border-[#2D214F] rounded-xl bg-[#130E20]">
+                   <p className="text-[#9B8FC0]">Nenhum serviço cadastrado.</p>
                 </div>
              ) : (
                 services.map(service => (
-                  <Card key={service.id} className="bg-slate-900/40 border-slate-800">
+                  <Card key={service.id} className="bg-[#130E20] border-[#2D214F] hover:border-[#4B3B7A] transition-colors shadow-sm">
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-bold text-slate-200">{service.title || service.name}</h4>
+                          <h4 className="font-bold text-white">{service.title || service.name}</h4>
                         </div>
-                        <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+                        <div className="flex items-center gap-4 text-xs font-mono text-[#9B8FC0]">
                            <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> {service.duration} min</span>
-                           <span className="flex items-center"><DollarSign className="w-3 h-3 mr-1" /> R$ {service.price.toFixed(2)}</span>
+                           <span className="flex items-center font-medium"><DollarSign className="w-3 h-3 mr-1" /> R$ {service.price.toFixed(2)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500/70 hover:text-red-400 hover:bg-red-950/30" onClick={() => handleDeleteService(service.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => handleDeleteService(service.id)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -646,33 +677,33 @@ export function DashboardHome() {
 
       {/* Cancellation Reason Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="sm:max-w-[425px] bg-[#130E20] border-[#2D214F] text-[#E2D9F3]">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse ring-4 ring-red-500/20" />
               Cancelar Agendamento
             </DialogTitle>
-            <CardDescription className="text-slate-400">
-              Por favor, informe a justificativa do cancelamento de {cancelingApt ? <b>{cancelingApt.clientName}</b> : 'agendamento'}.
+            <CardDescription className="text-[#9B8FC0]">
+              Por favor, informe a justificativa do cancelamento de {cancelingApt ? <b className="text-white">{cancelingApt.clientName}</b> : 'agendamento'}.
             </CardDescription>
           </DialogHeader>
           <form onSubmit={handleConfirmCancel} className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="cancelReason" className="text-slate-300">Justificativa / Motivo</Label>
+              <Label htmlFor="cancelReason" className="text-[#9B8FC0]">Justificativa / Motivo</Label>
               <textarea
                 id="cancelReason"
                 required
                 value={cancelReason}
                 onChange={e => setCancelReason(e.target.value)}
                 placeholder="Exemplo: Fora do horário de disponibilidade, imprevisto de força maior, etc."
-                className="w-full h-24 bg-slate-950 border border-slate-800 rounded-md p-3 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-purple-600 placeholder:text-slate-500"
+                className="w-full h-24 bg-[#0B0914] border border-[#2D214F] rounded-lg p-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-violet-500 placeholder:text-[#5B4F81]"
               />
             </div>
             <DialogFooter className="pt-2 flex sm:justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setIsCancelModalOpen(false)} className="text-slate-400 hover:text-white hover:bg-slate-800">
+              <Button type="button" variant="ghost" onClick={() => setIsCancelModalOpen(false)} className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]">
                 Voltar
               </Button>
-              <Button type="submit" variant="destructive" className="bg-red-600 hover:bg-red-700 text-white font-semibold">
+              <Button type="submit" variant="destructive" className="bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold border-none">
                 Confirmar Cancelamento
               </Button>
             </DialogFooter>
@@ -682,47 +713,47 @@ export function DashboardHome() {
 
       {/* Reschedule Modal */}
       <Dialog open={isRescheduleModalOpen} onOpenChange={setIsRescheduleModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="sm:max-w-[425px] bg-[#130E20] border-[#2D214F] text-white">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <RefreshCcw className="w-5 h-5 text-purple-500" />
+              <RefreshCcw className="w-5 h-5 text-violet-400" />
               Remarcar Agendamento
             </DialogTitle>
-            <CardDescription className="text-slate-400">
-              Escolha a nova data e horário para o agendamento de {reschedulingApt ? <b>{reschedulingApt.clientName}</b> : 'agendamento'}.
+            <CardDescription className="text-[#9B8FC0]">
+              Escolha a nova data e horário para o agendamento de {reschedulingApt ? <b className="text-white">{reschedulingApt.clientName}</b> : 'agendamento'}.
             </CardDescription>
           </DialogHeader>
           <form onSubmit={handleConfirmReschedule} className="space-y-4 pt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="rescheduleDate" className="text-slate-300">Nova Data</Label>
+                <Label htmlFor="rescheduleDate" className="text-[#9B8FC0]">Nova Data</Label>
                 <Input
                   id="rescheduleDate"
                   type="date"
                   required
                   value={rescheduleDate}
                   onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="bg-slate-950 border-slate-700 text-slate-100 focus-visible:ring-purple-600 block [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 block [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="rescheduleTime" className="text-slate-300">Novo Horário</Label>
+                <Label htmlFor="rescheduleTime" className="text-[#9B8FC0]">Novo Horário</Label>
                 <Input
                   id="rescheduleTime"
                   type="time"
                   required
                   value={rescheduleTime}
                   onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="bg-slate-950 border-slate-700 text-slate-100 focus-visible:ring-purple-600 block [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert"
+                  className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 block [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert h-11"
                 />
               </div>
             </div>
             
             <DialogFooter className="pt-4 flex sm:justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setIsRescheduleModalOpen(false)} className="text-slate-400 hover:text-white hover:bg-slate-800">
+              <Button type="button" variant="ghost" onClick={() => setIsRescheduleModalOpen(false)} className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]">
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-semibold">
+              <Button type="submit" className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold">
                 Confirmar Remarcação
               </Button>
             </DialogFooter>

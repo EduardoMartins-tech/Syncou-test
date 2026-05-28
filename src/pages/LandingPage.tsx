@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Share2, CalendarDays, Settings, Mail, Lock, Loader2, XCircle, Check } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Logo } from '../components/Logo';
 import { toast } from 'sonner';
 import { googleSignInBasic } from '../lib/firebase';
@@ -135,162 +136,196 @@ export function LandingPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <header className="fixed top-0 w-full bg-slate-950/80 backdrop-blur-md border-b border-slate-800 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
+    <div className="min-h-screen bg-[#0B0914] text-[#E2D9F3] font-sans selection:bg-violet-500/30">
+      <header className="fixed top-0 w-full bg-[#0B0914]/80 backdrop-blur-md border-b border-[#2D214F] z-50 animate-in fade-in slide-in-from-top-4 duration-500">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Logo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(147,51,234,0.5)]" />
-            <span className="font-bold text-xl tracking-tight text-white">Syncou</span>
+            <Logo className="w-8 h-8 text-violet-400 drop-shadow-[0_0_12px_rgba(139,92,246,0.3)]" />
+            <span className="font-semibold text-xl tracking-tight text-white">Syncou</span>
           </div>
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => openAuthModal('login')}>Log in</Button>
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/10" onClick={() => openAuthModal('register')}>
+          <nav className="flex items-center gap-3">
+            <Button variant="ghost" className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]/50 font-medium" onClick={() => openAuthModal('login')}>Log in</Button>
+            <Button className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-[0_0_20px_rgba(139,92,246,0.2)] font-medium rounded-lg" onClick={() => openAuthModal('register')}>
               Criar minha conta
             </Button>
           </nav>
         </div>
       </header>
 
-      <main className="pt-32 pb-16 px-4">
-        <section className="max-w-4xl mx-auto text-center mb-24 animate-in fade-in zoom-in-95 duration-700 delay-100">
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 text-white leading-tight">
-            Compartilhe seu link. <br />
-            <span className="text-purple-600 text-transparent bg-gradient-to-r from-purple-400 to-indigo-500 bg-clip-text">Receba agendamentos.</span>
+      <main className="pt-32 pb-16 px-4 overflow-hidden">
+        <motion.section 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-4xl mx-auto text-center mb-24"
+        >
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 text-white leading-[1.1]">
+            Agendamentos,<br />
+            <span className="text-violet-400">sem atrito.</span>
           </h1>
-          <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto font-normal leading-relaxed">
-            A plataforma definitiva para prestadores de serviço. 
-            Crie sua página pública, escolha seus serviços e deixe seus clientes agendarem automaticamente.
+          <p className="text-xl text-[#9B8FC0] mb-10 max-w-2xl mx-auto font-normal leading-relaxed">
+            A plataforma com o design mais elegante do mercado para prestadores de serviço. 
+            Crie sua página pública e deixe seus clientes agendarem automaticamente.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto text-lg h-14 px-8 rounded-full shadow-lg shadow-purple-600/20 active:scale-95 transition-all" onClick={() => openAuthModal('register')}>
+            <Button size="lg" className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white w-full sm:w-auto text-lg h-14 px-8 rounded-lg shadow-[0_0_20px_rgba(139,92,246,0.25)] font-medium transition-all" onClick={() => openAuthModal('register')}>
               Começar Gratuitamente
-              <ArrowRight className="ml-2 w-5 h-5 pointer-events-none" />
+              <ArrowRight className="ml-2 w-5 h-5 pointer-events-none opacity-80" />
             </Button>
           </div>
-        </section>
+        </motion.section>
 
         <section className="max-w-5xl mx-auto py-16">
-          <h2 className="text-3xl font-extrabold text-center mb-16 text-white tracking-tight">Como funciona</h2>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="text-3xl font-semibold text-center mb-16 text-white tracking-tight"
+          >
+            Como funciona
+          </motion.h2>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border border-slate-900 bg-slate-900/40 text-slate-100">
-              <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 bg-purple-900/30 border border-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-purple-400">
-                  <Settings className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-white">1. Configurar</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Defina seu perfil, crie sua slug personalizada e liste os serviços que você oferece com preços e durações.
-                </p>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm h-full">
+                <CardContent className="pt-8 text-center p-8">
+                  <div className="w-16 h-16 bg-[#1A1333] border border-[#2D214F] rounded-xl flex items-center justify-center mx-auto mb-6 text-violet-400 shadow-sm">
+                    <Settings className="w-7 h-7" strokeWidth={1.5} />
+                  </div>
+                  <h3 className="text-xl font-medium mb-3 text-white tracking-tight">1. Configurar</h3>
+                  <p className="text-[#9B8FC0] text-sm leading-relaxed">
+                    Defina seu perfil, crie sua área personalizada e liste os serviços que você oferece com preços e durações.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="border border-slate-900 bg-slate-900/40 text-slate-100">
-              <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 bg-purple-900/30 border border-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-purple-400">
-                  <Share2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-white">2. Compartilhar</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Copie seu link único (syncou.app/p/seu-nome) e envie para seus clientes, ou coloque na bio do seu Instagram.
-                </p>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm h-full">
+                <CardContent className="pt-8 text-center p-8">
+                  <div className="w-16 h-16 bg-[#1A1333] border border-[#2D214F] rounded-xl flex items-center justify-center mx-auto mb-6 text-violet-400 shadow-sm">
+                    <Share2 className="w-7 h-7" strokeWidth={1.5} />
+                  </div>
+                  <h3 className="text-xl font-medium mb-3 text-white tracking-tight">2. Compartilhar</h3>
+                  <p className="text-[#9B8FC0] text-sm leading-relaxed">
+                    Copie seu link único (syncou.app/seu-nome) e envie diretamente para seus clientes ou adicione no Instagram.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
 
-            <Card className="border border-slate-900 bg-slate-900/40 text-slate-100">
-              <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 bg-purple-900/30 border border-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-purple-400">
-                  <CalendarDays className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-white">3. Gerenciar</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Receba agendamentos no seu dashboard, aprove e gerencie tudo em um só lugar de forma simples e rápida.
-                </p>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm h-full">
+                <CardContent className="pt-8 text-center p-8">
+                  <div className="w-16 h-16 bg-[#1A1333] border border-[#2D214F] rounded-xl flex items-center justify-center mx-auto mb-6 text-violet-400 shadow-sm">
+                    <CalendarDays className="w-7 h-7" strokeWidth={1.5} />
+                  </div>
+                  <h3 className="text-xl font-medium mb-3 text-white tracking-tight">3. Gerenciar</h3>
+                  <p className="text-[#9B8FC0] text-sm leading-relaxed">
+                    Receba agendamentos no seu dashboard, aprove e gerencie seu negócio em um painel elegante e calmo.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-slate-800 py-12 bg-slate-950 mt-20">
-        <div className="max-w-7xl mx-auto px-4 text-center text-slate-500">
+      <footer className="border-t border-[#2D214F] py-12 bg-[#08060F] mt-20">
+        <div className="max-w-7xl mx-auto px-4 text-center text-[#9B8FC0] text-sm">
           <p>&copy; {new Date().getFullYear()} Syncou. Todos os direitos reservados.</p>
         </div>
       </footer>
 
       {/* Auth Modal with Email/Password */}
       <Dialog open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen}>
-        <DialogContent className="sm:max-w-[440px] bg-slate-900 border-slate-800 text-slate-100 p-6 shadow-2xl">
+        <DialogContent className="sm:max-w-[440px] bg-[#130E20] border-[#2D214F] text-[#E2D9F3] p-8 shadow-2xl rounded-2xl">
           <>
-            <DialogHeader className="space-y-1">
-              <div className="mx-auto flex items-center justify-center mb-2">
-                <Logo className="w-12 h-12 drop-shadow-[0_0_10px_rgba(147,51,234,0.4)]" />
+            <DialogHeader className="space-y-2">
+              <div className="mx-auto flex items-center justify-center mb-4">
+                <Logo className="w-12 h-12 text-violet-400 drop-shadow-[0_0_12px_rgba(139,92,246,0.3)]" />
               </div>
-              <DialogTitle className="text-2xl font-black text-center text-white tracking-tight">
+              <DialogTitle className="text-2xl font-semibold text-center text-white tracking-tight">
                 {authMode === 'login' 
                   ? 'Entrar no Syncou' 
                   : 'Crie sua conta' 
                 }
               </DialogTitle>
-              <DialogDescription className="text-slate-405 text-center text-slate-400 text-sm">
+              <DialogDescription className="text-center text-[#9B8FC0] text-sm">
                 {authMode === 'login' 
                   ? 'Entre para gerenciar seus agendamentos' 
-                  : 'Comece a receber agendamentos hoje mesmo' 
+                  : 'Comece a receber agendamentos de forma elegante' 
                 }
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-lg my-4">
+            <div className="grid grid-cols-2 p-1 bg-[#0A0713] rounded-lg my-6 border border-[#2D214F]/50">
               <button
                 onClick={() => setAuthMode('login')}
-                className={`py-2 text-sm font-semibold rounded-md transition-all ${
+                className={`py-2 text-sm font-medium rounded-md transition-all ${
                   authMode === 'login'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#2D214F] text-white shadow-sm'
+                    : 'text-[#9B8FC0] hover:text-white'
                 }`}
               >
                 Entrar
               </button>
               <button
                 onClick={() => setAuthMode('register')}
-                className={`py-2 text-sm font-semibold rounded-md transition-all ${
+                className={`py-2 text-sm font-medium rounded-md transition-all ${
                   authMode === 'register'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#2D214F] text-white shadow-sm'
+                    : 'text-[#9B8FC0] hover:text-white'
                 }`}
               >
                 Criar Conta
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <form onSubmit={handleEmailAuthSubmit} className="space-y-4">
                 {authMode === 'register' && authStep === 'otp' ? (
                   <div className="space-y-1.5 animate-in fade-in slide-in-from-right-4">
-                    <Label htmlFor="auth-otp" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                    <Label htmlFor="auth-otp" className="text-xs font-semibold uppercase tracking-wider text-[#9B8FC0]">
                       Código de Verificação
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C6FA4]" />
                       <Input
                         id="auth-otp"
                         type="text"
                         required
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value)}
-                        placeholder="Digite o código (ex: 123456)"
-                        className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
+                        placeholder="Ex: 123456"
+                        className="bg-[#0A0713] border-[#2D214F] text-[#E2D9F3] placeholder:text-[#5B4F81] pl-10 focus-visible:ring-violet-500 h-11 rounded-lg shadow-sm"
                       />
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">Enviamos um código para {email}.</p>
+                    <p className="text-xs text-[#9B8FC0] mt-2">Enviamos um código para {email}.</p>
                   </div>
                 ) : (
                   <>
                     <div className="space-y-1.5">
-                      <Label htmlFor="auth-email" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      <Label htmlFor="auth-email" className="text-xs font-semibold uppercase tracking-wider text-[#9B8FC0]">
                         E-mail
                       </Label>
                       <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C6FA4]" />
                         <Input
                           id="auth-email"
                           type="email"
@@ -298,17 +333,17 @@ export function LandingPage() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="voce@exemplo.com"
-                          className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
+                          className="bg-[#0A0713] border-[#2D214F] text-[#E2D9F3] placeholder:text-[#5B4F81] pl-10 focus-visible:ring-violet-500 h-11 rounded-lg shadow-sm"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="auth-password" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      <Label htmlFor="auth-password" className="text-xs font-semibold uppercase tracking-wider text-[#9B8FC0]">
                         Senha
                       </Label>
                       <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7C6FA4]" />
                         <Input
                           id="auth-password"
                           type="password"
@@ -316,15 +351,15 @@ export function LandingPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder={authMode === 'register' ? "Mínimo 6 caracteres" : "Sua senha"}
-                          className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
+                          className="bg-[#0A0713] border-[#2D214F] text-[#E2D9F3] placeholder:text-[#5B4F81] pl-10 focus-visible:ring-violet-500 h-11 rounded-lg shadow-sm"
                         />
                       </div>
                       
                       {authMode === 'register' && (
                         <div className="pt-2 space-y-1.5">
                           <div className="flex items-center gap-2 text-xs">
-                            {hasMinLength ? <Check className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-slate-500" />}
-                            <span className={hasMinLength ? "text-slate-500" : "text-slate-300"}>Mínimo de 6 caracteres</span>
+                            {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <div className="w-3.5 h-3.5 rounded-full border border-[#5B4F81]" />}
+                            <span className={hasMinLength ? "text-emerald-400" : "text-[#5B4F81]"}>Mínimo de 6 caracteres</span>
                           </div>
                         </div>
                       )}
@@ -335,7 +370,7 @@ export function LandingPage() {
                 <Button
                   type="submit"
                   disabled={isSubmitting || (authMode === 'register' && authStep === 'form' && !isValidPassword)}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 transition-all flex items-center justify-center gap-1.5 mt-2"
+                  className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-medium h-11 rounded-lg shadow-[0_0_20px_rgba(139,92,246,0.25)] transition-all flex items-center justify-center gap-2 mt-4"
                 >
                   {isSubmitting ? (
                     <>
@@ -354,12 +389,12 @@ export function LandingPage() {
 
               {authStep === 'form' && (
                 <>
-                  <div className="relative my-4">
+                  <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-800"></div>
+                      <div className="w-full border-t border-[#2D214F]"></div>
                     </div>
                     <div className="relative flex justify-center text-xs">
-                      <span className="bg-slate-900 px-2 text-slate-500">ou</span>
+                      <span className="bg-[#130E20] px-3 text-[#5B4F81] uppercase tracking-widest font-medium">ou</span>
                     </div>
                   </div>
 
@@ -368,10 +403,10 @@ export function LandingPage() {
                     variant="outline"
                     disabled={isGoogleSubmitting}
                     onClick={handleGoogleSignIn}
-                    className="w-full border-slate-700 bg-slate-950 hover:bg-slate-800 text-white h-11"
+                    className="w-full border-[#2D214F] bg-[#1A1333] hover:bg-[#2D214F] text-[#E2D9F3] font-medium h-11 rounded-lg shadow-sm"
                   >
                     {isGoogleSubmitting ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin text-zinc-500" />
                     ) : (
                       <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -385,15 +420,15 @@ export function LandingPage() {
                 </>
               )}
 
-              <div className="text-center pt-2">
+              <div className="text-center pt-4">
                 <button
                   type="button"
                   onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                  className="text-xs text-purple-400 hover:text-purple-300 hover:underline transition-all"
+                  className="text-sm text-[#9B8FC0] hover:text-white hover:underline decoration-[#5B4F81] underline-offset-4 transition-all"
                 >
                   {authMode === 'login' 
-                    ? 'Não tem uma conta profissional? Increva-se agora!'
-                    : 'Já possui cadastro? Faça o login na sua conta'
+                    ? 'Não tem uma conta? Comece aqui'
+                    : 'Já possui cadastro? Acesse sua conta'
                   }
                 </button>
               </div>

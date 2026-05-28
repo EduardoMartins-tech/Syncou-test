@@ -131,9 +131,9 @@ export function Onboarding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B0914] flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center">
-          <Logo className="w-16 h-16 drop-shadow-[0_0_15px_rgba(147,51,234,0.5)] mb-4" />
+          <Logo className="w-16 h-16 drop-shadow-[0_0_15px_rgba(139,92,246,0.5)] mb-4" />
         </div>
       </div>
     );
@@ -144,9 +144,9 @@ export function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex items-center justify-center p-4">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-purple-600/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="min-h-screen bg-[#0B0914] text-white font-sans flex items-center justify-center p-4">
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#8B5CF6]/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-[#8B5CF6]/5 rounded-full blur-[100px] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -154,29 +154,29 @@ export function Onboarding() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-full max-w-xl relative z-10"
       >
-        <Card className="border border-slate-850 bg-slate-900/80 backdrop-blur-md shadow-2xl">
+        <Card className="border border-[#2D214F] bg-[#130E20]/80 backdrop-blur-md shadow-2xl">
           <CardHeader className="text-center pb-4">
             <div className="mx-auto flex items-center justify-center mb-4">
-              <Logo className="w-16 h-16 drop-shadow-[0_0_15px_rgba(147,51,234,0.5)]" />
+              <Logo className="w-16 h-16 drop-shadow-[0_0_15px_rgba(139,92,246,0.5)]" />
             </div>
             <CardTitle className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mb-2">
               Seja bem-vindo ao Syncou!
             </CardTitle>
-            <CardDescription className="text-slate-400 max-w-sm mx-auto">
+            <CardDescription className="text-[#9B8FC0] max-w-sm mx-auto">
               Complete seu perfil profissional para começar a receber agendamentos.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="displayName" className="text-slate-300 font-medium text-sm">
+                <Label htmlFor="displayName" className="text-[#E2D9F3] font-medium text-sm">
                   Nome do Profissional ou Negócio
                 </Label>
                 <Input
                   id="displayName"
                   {...register('displayName')}
                   placeholder="Seu Nome Completo"
-                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus-visible:ring-purple-600 focus:border-purple-600"
+                  className="bg-[#0B0914] border-[#2D214F] text-white placeholder:text-[#5B4F81] focus-visible:ring-violet-500 focus:border-violet-500 h-11"
                 />
                 {errors.displayName && (
                   <p className="text-xs text-red-400 flex items-center gap-1">
@@ -187,16 +187,16 @@ export function Onboarding() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="whatsapp" className="text-slate-300 font-medium text-sm">
+                <Label htmlFor="whatsapp" className="text-[#E2D9F3] font-medium text-sm">
                   Seu WhatsApp
                 </Label>
                 <Input
                   id="whatsapp"
                   {...register('whatsapp')}
                   placeholder="Ex: 5511999999999"
-                  className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus-visible:ring-purple-600 focus:border-purple-600"
+                  className="bg-[#0B0914] border-[#2D214F] text-white placeholder:text-[#5B4F81] focus-visible:ring-violet-500 focus:border-violet-500 h-11"
                 />
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-[#5B4F81]">
                   DDI + DDD + Número (apenas dígitos). Exemplo: 5511999999999.
                 </p>
                 {errors.whatsapp && (
@@ -208,26 +208,26 @@ export function Onboarding() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug" className="text-slate-300 font-medium text-sm">
+                <Label htmlFor="slug" className="text-[#E2D9F3] font-medium text-sm">
                   Link Personalizado da sua Agenda
                 </Label>
                 <div className="relative flex items-center">
-                  <span className="absolute left-3 text-slate-500 text-sm select-none font-medium">
+                  <span className="absolute left-3 text-[#5B4F81] text-sm select-none font-medium">
                     syncou.app/p/
                   </span>
                   <Input
                     id="slug"
                     {...register('slug')}
                     placeholder="seu-nome"
-                    className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600 focus-visible:ring-purple-600 focus:border-purple-600 pl-[100px]"
+                    className="bg-[#0B0914] border-[#2D214F] text-white placeholder:text-[#5B4F81] focus-visible:ring-violet-500 focus:border-violet-500 pl-[100px] h-11"
                   />
                 </div>
 
                 {slugValue && slugValue.length >= 3 && (
                   <div className="flex items-center gap-2 mt-1.5 transition-all text-xs">
                     {checkingSlug ? (
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin text-purple-500" />
+                      <span className="text-[#9B8FC0] flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin text-violet-500" />
                         Verificando link...
                       </span>
                     ) : slugAvailable ? (
@@ -252,7 +252,7 @@ export function Onboarding() {
               <Button
                 type="submit"
                 disabled={saving || checkingSlug || slugAvailable === false}
-                className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-all shadow-md rounded-lg flex items-center justify-center gap-2"
+                className="w-full h-12 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-semibold transition-all shadow-md rounded-lg flex items-center justify-center gap-2"
               >
                 {saving ? (
                   <>
