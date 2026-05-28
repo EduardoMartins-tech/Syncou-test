@@ -8,6 +8,7 @@ import { ResetPassword } from './pages/ResetPassword';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardHome } from './pages/DashboardHome';
 import { DashboardSettings } from './pages/DashboardSettings';
+import { DashboardCalendar } from './pages/DashboardCalendar';
 import { NotFound } from './pages/NotFound';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
@@ -37,6 +38,10 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <DashboardHome />,
+      },
+      {
+        path: "calendar",
+        element: <DashboardCalendar />,
       },
       {
         path: "settings",

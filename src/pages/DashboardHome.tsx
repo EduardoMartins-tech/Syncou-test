@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check } from 'lucide-react';
+import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check, CheckCircle2, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -181,7 +181,16 @@ export function DashboardHome() {
             const formattedDate = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             const formattedTime = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             
-            const message = `Olá ${apt.clientName}, passando para confirmar seu agendamento de ${servicesText} no dia ${formattedDate} às ${formattedTime}. Te aguardo!`;
+            let message = `Olá {NOME}, passando para confirmar seu agendamento de {SERVICOS} no dia {DATA} às {HORA}. Te aguardo!`;
+            if (currentUser?.whatsappMessageTemplate) {
+               message = currentUser.whatsappMessageTemplate;
+            }
+            message = message
+               .replace(/{NOME}/g, apt.clientName)
+               .replace(/{SERVICOS}/g, servicesText)
+               .replace(/{DATA}/g, formattedDate)
+               .replace(/{HORA}/g, formattedTime);
+            
             const url = `https://wa.me/${digitsOnly}?text=${encodeURIComponent(message)}`;
             window.open(url, '_blank', 'noopener,noreferrer');
          }
@@ -356,6 +365,16 @@ export function DashboardHome() {
     return true;
   });
 
+  const now = new Date();
+  const currentMonthRevenue = appointments
+    .filter(a => {
+       const isConfirmed = a.status === 'confirmed' || a.status === 'Confirmado';
+       if (!isConfirmed) return false;
+       const dateObj = new Date(a.startAt || a.date || '');
+       return dateObj.getMonth() === now.getMonth() && dateObj.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, a) => sum + (Number(a.totalPrice) || 0), 0);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 overflow-hidden">
       <motion.div 
@@ -386,15 +405,32 @@ export function DashboardHome() {
       </motion.div>
 
       {/* Metrics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isFetchingAppointments ? (
           <>
+            <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
             <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
             <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
             <div className="bg-[#130E20] rounded-2xl h-32 animate-pulse border border-[#2D214F]" />
           </>
         ) : (
           <>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#130E20] p-6 rounded-2xl border border-[#2D214F] hover:border-[#4B3B7A] transition-colors shadow-sm"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-[#9B8FC0]">Faturamento (Mês)</h3>
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="text-3xl font-bold text-white flex items-baseline gap-1">
+                <span className="text-lg font-medium text-[#9B8FC0]">R$</span>
+                {currentMonthRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </motion.div>
+
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -416,7 +452,7 @@ export function DashboardHome() {
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-[#9B8FC0]">Pendentes</h3>
-                <Clock className="w-5 h-5 text-[#8B5CF6]" />
+                <Clock className="w-5 h-5 text-amber-400" />
               </div>
               <div className="text-4xl font-bold text-white">
                 {appointments.filter(a => a.status === 'scheduled' || a.status === 'Pendente' || !a.status).length}
@@ -431,7 +467,7 @@ export function DashboardHome() {
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-[#9B8FC0]">Confirmados</h3>
-                <CheckCircle className="w-5 h-5 text-[#8B5CF6]" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               </div>
               <div className="text-4xl font-bold text-white">
                 {appointments.filter(a => a.status === 'confirmed' || a.status === 'Confirmado').length}
@@ -531,14 +567,14 @@ export function DashboardHome() {
                            </div>
                         </div>
                         <div className="text-right">
-                          <div className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center
-                            ${(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-                              (apt.status === 'confirmed' || apt.status === 'Confirmado') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                              'bg-red-500/10 text-red-400 border border-red-500/20'}
+                          <div className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1.5
+                            ${(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 
+                              (apt.status === 'confirmed' || apt.status === 'Confirmado') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 
+                              'bg-red-500/15 text-red-400 border border-red-500/30'}
                           `}>
-                            {(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) && 'Pendente'}
-                            {(apt.status === 'confirmed' || apt.status === 'Confirmado') && 'Confirmado'}
-                            {(apt.status === 'cancelled' || apt.status === 'Cancelado') && 'Cancelado'}
+                            {(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) && <><Clock className="w-3.5 h-3.5" /> Pendente</>}
+                            {(apt.status === 'confirmed' || apt.status === 'Confirmado') && <><CheckCircle2 className="w-3.5 h-3.5" /> Confirmado</>}
+                            {(apt.status === 'cancelled' || apt.status === 'Cancelado') && <><XCircle className="w-3.5 h-3.5" /> Cancelado</>}
                           </div>
                           {apt.bookingSource === 'public_link' && (
                              <div className="text-[10px] uppercase font-bold tracking-wider text-violet-500 mt-2">

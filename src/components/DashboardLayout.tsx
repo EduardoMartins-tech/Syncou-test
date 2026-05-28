@@ -26,6 +26,7 @@ export function DashboardLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Calendário', path: '/dashboard/calendar', icon: Calendar },
     { name: 'Minha Página', path: '/dashboard/settings', icon: Settings },
   ];
 

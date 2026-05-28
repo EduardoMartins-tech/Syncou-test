@@ -156,12 +156,19 @@ export function ProviderPage() {
       // Basic check: is the slot in the past?
       const isPast = isSameDay(selectedDate, now) && isAfter(now, start);
       
-      if (!isPast) {
+      // Slot must finish before or exactly at the provider's closing time
+      const exceedsClosingTime = slotEndAt > end.getTime();
+      
+      if (!isPast && !exceedsClosingTime) {
         // Check for overlaps with existing appointments
+        // Added a 5 minute overlap tolerance (5 * 60000 ms) so that if an appointment 
+        // ends up to 5 mins into a slot (e.g. 17:31 ending at 17:30 slot), it won't block the next slot.
+        const tolerance = 5 * 60000;
+        
         const isOccupied = appointments.some(app => {
           // An appointment overlaps if it starts before our slot ends AND ends after our slot starts
           const isValidStatus = app.status === 'Pendente' || app.status === 'Confirmado' || app.status === 'scheduled' || app.status === 'confirmed' || !app.status;
-          return isValidStatus && app.startAt < slotEndAt && app.endAt > slotTime;
+          return isValidStatus && app.startAt < (slotEndAt - tolerance) && app.endAt > (slotTime + tolerance);
         });
 
         if (!isOccupied) {

@@ -13,6 +13,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { googleSignInForCalendar } from '../lib/firebase';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const slugSchema = z.object({
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens").max(60),
@@ -23,6 +26,7 @@ const slugSchema = z.object({
   workingHoursEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Use formato HH:MM (ex: 18:00)"),
   workingDays: z.array(z.number()),
   whatsapp: z.string().optional(),
+  whatsappMessageTemplate: z.string().optional(),
 });
 
 const DAYS_OF_WEEK = [
@@ -50,6 +54,35 @@ export function DashboardSettings() {
   const [overrideIsClosed, setOverrideIsClosed] = useState(false);
   const [savingOverride, setSavingOverride] = useState(false);
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
+  const [multipleClosedDates, setMultipleClosedDates] = useState<Date[] | undefined>([]);
+  const [savingMultiple, setSavingMultiple] = useState(false);
+
+  const handleMarkMultipleAsClosed = async () => {
+    if (!currentUser || !multipleClosedDates || multipleClosedDates.length === 0) return;
+    setSavingMultiple(true);
+    
+    try {
+      const newOverrides = { ...scheduleOverrides };
+      for (const date of multipleClosedDates) {
+        const dateKey = format(date, 'yyyy-MM-dd');
+        newOverrides[dateKey] = {
+          start: '00:00',
+          end: '23:59',
+          isClosed: true
+        };
+      }
+      
+      await updateUser({ scheduleOverrides: newOverrides });
+      setScheduleOverrides(newOverrides);
+      toast.success(`${multipleClosedDates.length} dia(s) marcado(s) como fechado(s)!`);
+      setMultipleClosedDates([]);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao adicionar exceções.");
+    } finally {
+      setSavingMultiple(false);
+    }
+  };
 
   const handleConnectGoogleCalendar = async () => {
     try {
@@ -105,6 +138,7 @@ export function DashboardSettings() {
       workingHoursEnd: '18:00',
       workingDays: [1, 2, 3, 4, 5],
       whatsapp: '',
+      whatsappMessageTemplate: '',
     }
   });
 
@@ -204,6 +238,7 @@ export function DashboardSettings() {
           workingHoursEnd: currentUser.workingHoursEnd || '18:00',
           workingDays: parsedWorkingDays,
           whatsapp: currentUser.whatsapp || '',
+          whatsappMessageTemplate: currentUser.whatsappMessageTemplate || '',
         });
      }
   }, [currentUser, reset]);
@@ -222,6 +257,7 @@ export function DashboardSettings() {
         workingHoursEnd: data.workingHoursEnd,
         workingDays: JSON.stringify(data.workingDays),
         whatsapp: cleanWhatsapp,
+        whatsappMessageTemplate: data.whatsappMessageTemplate,
       };
 
       await updateUser(payload);
@@ -425,6 +461,15 @@ export function DashboardSettings() {
                 />
                 <p className="text-xs text-[#5B4F81]">Adicione o DDI e DDD (ex: 5511999999999) para que clientes possam enviar mensagens.</p>
                 {errors.whatsapp && <p className="text-red-400 text-sm">{errors.whatsapp.message}</p>}
+                
+                <Label htmlFor="whatsappMessageTemplate" className="text-[#E2D9F3] mt-4 block">Mensagem de Confirmação (WhatsApp)</Label>
+                <Textarea
+                  id="whatsappMessageTemplate"
+                  {...register('whatsappMessageTemplate')}
+                  className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 min-h-[100px] placeholder:text-[#5B4F81]"
+                  placeholder="Ex: Olá {NOME}, passando para confirmar seu agendamento de {SERVICOS} no dia {DATA} às {HORA}. Te aguardo!"
+                />
+                <p className="text-xs text-[#5B4F81]">Você pode usar as aspas dinâmicas: {"{NOME}"}, {"{SERVICOS}"}, {"{DATA}"} e {"{HORA}"}.</p>
               </div>
             </CardContent>
           </Card>
@@ -581,6 +626,36 @@ export function DashboardSettings() {
                 {savingOverride ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                 Adicionar
               </Button>
+            </div>
+
+            <div className="bg-[#0B0914] p-4 rounded-xl border border-[#2D214F] flex flex-col md:flex-row gap-6 items-start">
+               <div>
+                  <h4 className="text-white font-medium mb-1">Selecionar Múltiplos Dias</h4>
+                  <p className="text-sm text-[#9B8FC0] mb-4">Clique nos dias no calendário para marcá-os como "Folga" ou "Fechado".</p>
+                  <Calendar
+                    mode="multiple"
+                    selected={multipleClosedDates}
+                    onSelect={setMultipleClosedDates}
+                    locale={ptBR}
+                    className="bg-[#130E20] border border-[#2D214F] rounded-lg p-3 text-white max-w-fit pointer-events-auto"
+                  />
+               </div>
+               <div className="flex flex-col justify-end h-full mt-auto mb-2 space-y-3">
+                  <div className="p-3 bg-[#1A1333] border border-[#2D214F] rounded-lg">
+                    <p className="text-sm text-[#E2D9F3]">
+                      <strong>{multipleClosedDates?.length || 0}</strong> dia(s) selecionado(s)
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleMarkMultipleAsClosed}
+                    disabled={!multipleClosedDates?.length || savingMultiple}
+                    className="w-full sm:w-auto bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 h-11"
+                  >
+                    {savingMultiple ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CalendarX2 className="w-4 h-4 mr-2" />}
+                    Marcar como Fechado
+                  </Button>
+               </div>
             </div>
 
             {Object.keys(scheduleOverrides).length > 0 ? (

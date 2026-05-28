@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
+import cron from 'node-cron';
 
 let transporter: nodemailer.Transporter | null = null;
 async function setupEmail() {
@@ -36,6 +37,64 @@ async function setupEmail() {
   }
 }
 setupEmail().catch(console.error);
+
+function setupCronJobs() {
+  // Run daily at 08:00
+  cron.schedule('0 8 * * *', async () => {
+    console.log('Running daily reminder cron job...');
+    try {
+      if (!transporter) return;
+
+      const tomorrowStart = new Date();
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      tomorrowStart.setHours(0, 0, 0, 0);
+
+      const tomorrowEnd = new Date();
+      tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+      tomorrowEnd.setHours(23, 59, 59, 999);
+
+      const startMs = tomorrowStart.getTime().toString();
+      const endMs = tomorrowEnd.getTime().toString();
+
+      const result = await pool.query(
+        `SELECT a.*, u.display_name as provider_name 
+         FROM appointments a 
+         JOIN users u ON a.provider_id = u.id 
+         WHERE a.start_at >= $1 AND a.start_at <= $2 
+         AND a.status != 'cancelled' AND a.status != 'Cancelado'`,
+        [startMs, endMs]
+      );
+
+      for (const apt of result.rows) {
+        if (apt.client_email) {
+          const dateObj = new Date(Number(apt.start_at));
+          const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+          const dateStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+
+          try {
+            const info = await transporter.sendMail({
+              from: '"Syncou" <noreply@syncou.app>',
+              to: apt.client_email,
+              subject: `Lembrete de Agendamento: ${apt.provider_name}`,
+              text: `Olá ${apt.client_name},\n\nEste é um lembrete do seu agendamento com ${apt.provider_name} amanhã (${dateStr}) às ${timeStr}.\n\nTe aguardamos!`,
+              html: `<p>Olá <b>${apt.client_name}</b>,</p><p>Este é um lembrete do seu agendamento com <b>${apt.provider_name}</b> amanhã (<b>${dateStr}</b>) às <b>${timeStr}</b>.</p><p>Te aguardamos!</p>`
+            });
+            console.log(`Reminder sent to ${apt.client_email} for appointment ${apt.id}`);
+            const testMessageUrl = nodemailer.getTestMessageUrl(info);
+            if (testMessageUrl) {
+              console.log('Preview URL: %s', testMessageUrl);
+            }
+          } catch (err) {
+            console.error(`Failed to send reminder to ${apt.client_email}: `, err);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error in daily reminder cron job:', err);
+    }
+  });
+}
+setupCronJobs();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -100,12 +159,14 @@ async function runMigrations() {
         whatsapp VARCHAR(50),
         schedule_overrides TEXT,
         google_access_token TEXT,
+        whatsapp_message_template TEXT,
         role VARCHAR(50) DEFAULT 'provider',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       
       -- Alter table explicitly in case it already exists but without the new column
       ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_message_template TEXT;
 
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
@@ -317,7 +378,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/users/me', authenticateToken, async (req: any, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", role FROM users WHERE id = $1',
+      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role FROM users WHERE id = $1',
       [req.user.id]
     );
     const user = result.rows[0];
@@ -480,8 +541,9 @@ app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
         working_days = COALESCE($6, working_days),
         whatsapp = COALESCE($7, whatsapp),
         schedule_overrides = COALESCE($8, schedule_overrides),
-        avatar_url = COALESCE($9, avatar_url)
-      WHERE id = $10
+        avatar_url = COALESCE($9, avatar_url),
+        whatsapp_message_template = COALESCE($10, whatsapp_message_template)
+      WHERE id = $11
     `, [
       data.slug ?? null, 
       data.displayName ?? null, 
@@ -492,6 +554,7 @@ app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
       data.whatsapp ?? null, 
       scheduleOverridesStr,
       data.avatarUrl ?? null,
+      data.whatsappMessageTemplate ?? null,
       id
     ]);
     
@@ -690,6 +753,51 @@ app.get('/api/provider/:slug/appointments', async (req, res) => {
 app.post('/api/provider/:slug/book', async (req, res) => {
   try {
     const { providerId, clientName, clientWhatsApp, clientPhone, clientEmail, services, totalPrice, totalDuration, bufferTime, bookingSource, status, startAt, endAt } = req.body;
+    
+    // Validate working hours
+    const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken" FROM users WHERE id = $1', [providerId]);
+    if (providerUser.rows.length === 0) {
+      return res.status(404).json({ error: 'Provedor não encontrado' });
+    }
+    const providerRow = providerUser.rows[0];
+
+    try {
+      if (providerRow.scheduleOverrides) {
+        providerRow.scheduleOverrides = JSON.parse(providerRow.scheduleOverrides);
+      }
+    } catch(e) {}
+
+    let workingStart = providerRow.workingHoursStart || "09:00";
+    let workingEnd = providerRow.workingHoursEnd || "18:00";
+    let isClosed = false;
+
+    const startDateObj = new Date(Number(startAt));
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    // Using local date values of the server representation of startAt
+    const dateKey = `${startDateObj.getFullYear()}-${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
+
+    if (providerRow.scheduleOverrides && providerRow.scheduleOverrides[dateKey]) {
+      const override = providerRow.scheduleOverrides[dateKey];
+      if (override.isClosed) {
+        isClosed = true;
+      } else {
+        workingStart = override.start;
+        workingEnd = override.end;
+      }
+    }
+
+    if (isClosed) {
+      return res.status(400).json({ error: 'O provedor não está disponível nesta data.' });
+    }
+
+    const [endHour, endMin] = workingEnd.split(':').map(Number);
+    const endOfShift = new Date(Number(startAt));
+    endOfShift.setHours(endHour, endMin, 0, 0);
+
+    if (Number(endAt) > endOfShift.getTime()) {
+      return res.status(400).json({ error: 'A duração dos serviços excede o horário de trabalho do provedor.' });
+    }
+
     const id = generateId();
     
     await pool.query(
