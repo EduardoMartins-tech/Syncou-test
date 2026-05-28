@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Copy, ExternalLink, RefreshCw, Upload, User, Plus, Trash2, CalendarX2 } from 'lucide-react';
+import { Copy, ExternalLink, RefreshCw, Upload, User, Plus, Trash2, CalendarX2, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { googleSignInForCalendar } from '../lib/firebase';
 
 const slugSchema = z.object({
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens").max(60),
@@ -47,6 +48,30 @@ export function DashboardSettings() {
   const [overrideEnd, setOverrideEnd] = useState('18:00');
   const [overrideIsClosed, setOverrideIsClosed] = useState(false);
   const [savingOverride, setSavingOverride] = useState(false);
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
+
+  const handleConnectGoogleCalendar = async () => {
+    try {
+      const result = await googleSignInForCalendar();
+      if (result?.accessToken) {
+         // Save the token to backend
+         await fetch('/api/users/google-token', {
+           method: 'POST',
+           headers: {
+             ...getAuthHeaders(),
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify({ token: result.accessToken }),
+         });
+         setGoogleCalendarConnected(true);
+         toast.success("Google Agenda conectado com sucesso!");
+      }
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+         toast.error("Falha ao conectar Google Agenda.");
+      }
+    }
+  };
 
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<SettingsForm>({
     resolver: zodResolver(slugSchema),
@@ -135,6 +160,10 @@ export function DashboardSettings() {
         console.log("currentUser from server:", currentUser);
         setCurrentSlug(currentUser.slug || '');
         setScheduleOverrides(currentUser.scheduleOverrides || {});
+        
+        if (currentUser.googleAccessToken) {
+           setGoogleCalendarConnected(true);
+        }
         
         let parsedWorkingDays = [1, 2, 3, 4, 5];
         if (Array.isArray(currentUser.workingDays)) {
@@ -565,6 +594,39 @@ export function DashboardSettings() {
                  Nenhuma exceção cadastrada.
                </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* INTEGRATIONS SETTINGS */}
+        <Card className="bg-slate-900/40 border-slate-800 shadow-sm mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl font-bold">
+               <CalendarIcon className="w-5 h-5 text-purple-400" />
+               Integrações
+            </CardTitle>
+            <CardDescription className="text-slate-400">
+              Conecte sua conta do Google Calendar para sincronizar agendamentos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+               <div>
+                  <h4 className="font-medium text-slate-200 mb-1">Google Calendar</h4>
+                  <p className="text-sm text-slate-500">Agende e sincronize eventos automaticamente.</p>
+               </div>
+               <Button
+                 type="button"
+                 onClick={handleConnectGoogleCalendar}
+                 disabled={googleCalendarConnected}
+                 className={`mt-4 sm:mt-0 ${googleCalendarConnected ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' : 'bg-white text-slate-900 hover:bg-slate-200'} transition-all font-semibold shadow-sm`}
+               >
+                 {googleCalendarConnected ? (
+                    <><CheckCircle2 className="w-4 h-4 mr-2" /> Conectado</>
+                 ) : (
+                    <><CalendarIcon className="w-4 h-4 mr-2" /> Conectar</>
+                 )}
+               </Button>
+             </div>
           </CardContent>
         </Card>
       </div>

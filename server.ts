@@ -5,6 +5,37 @@ import { createServer as createViteServer } from 'vite';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
+
+let transporter: nodemailer.Transporter | null = null;
+async function setupEmail() {
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+    console.log('Using configured SMTP for emails.');
+  } else {
+    // Ethereal email for testing/sandbox
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    console.log('Using Ethereal Email for testing (check console for preview URLs).');
+  }
+}
+setupEmail().catch(console.error);
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -68,9 +99,13 @@ async function runMigrations() {
         working_days TEXT,
         whatsapp VARCHAR(50),
         schedule_overrides TEXT,
+        google_access_token TEXT,
         role VARCHAR(50) DEFAULT 'provider',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
+      -- Alter table explicitly in case it already exists but without the new column
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;
 
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
@@ -103,6 +138,13 @@ async function runMigrations() {
         end_at BIGINT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS otp_codes (
+        email VARCHAR(255) PRIMARY KEY,
+        code VARCHAR(10) NOT NULL,
+        expires_at TIMESTAMP NOT NULL
       );
     `);
     console.log("Banco de dados sincronizado e tabelas verificadas com sucesso! (PostgreSQL)");
@@ -139,9 +181,68 @@ function generateId() {
 
 // ====== API ROUTES ====== //
 
+app.post('/api/auth/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'E-mail obrigatório.' });
+
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'Este e-mail já está em uso.' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await pool.query(
+      `INSERT INTO otp_codes (email, code, expires_at) VALUES ($1, $2, $3)
+       ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, expires_at = EXCLUDED.expires_at`,
+      [email, code, expiresAt]
+    );
+
+    if (transporter) {
+      const info = await transporter.sendMail({
+        from: '"Syncou" <noreply@syncou.app>',
+        to: email,
+        subject: 'Seu código de verificação Syncou',
+        text: `Seu código de verificação é: ${code}. Ele expira em 10 minutos.`,
+        html: `<b>Seu código de verificação é: ${code}</b><br>Ele expira em 10 minutos.`
+      });
+      console.log('Message sent: %s', info.messageId);
+      const testMessageUrl = nodemailer.getTestMessageUrl(info);
+      if (testMessageUrl) {
+        console.log('Preview URL: %s', testMessageUrl);
+      }
+    }
+
+    // Always log the code for testing purposes in the console
+    console.log(`[TESTING] Email OTP for ${email}: ${code}`);
+
+    res.json({ success: true, message: 'Código enviado com sucesso.' });
+  } catch (error: any) {
+    console.error('Error sending OTP:', error);
+    res.status(500).json({ error: 'Falha ao enviar o código de verificação.' });
+  }
+});
+
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, code } = req.body;
+    if (!email || !password || !code) return res.status(400).json({ error: 'Dados incompletos. Informe email, código e senha.' });
+
+    const otpResult = await pool.query('SELECT code, expires_at FROM otp_codes WHERE email = $1', [email]);
+    if (otpResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Código não encontrado ou e-mail inválido.' });
+    }
+
+    const otpRecord = otpResult.rows[0];
+    if (otpRecord.code !== code) {
+      return res.status(400).json({ error: 'Código de verificação incorreto.' });
+    }
+    if (new Date() > new Date(otpRecord.expires_at)) {
+      return res.status(400).json({ error: 'Código de verificação expirado.' });
+    }
+
     const hash = await bcrypt.hash(password, 10);
     const id = generateId();
     
@@ -151,6 +252,9 @@ app.post('/api/auth/register', async (req, res) => {
       'INSERT INTO users (id, email, password_hash, display_name, role, working_days, working_hours_start, working_hours_end) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       [id, email, hash, email.split('@')[0], 'provider', workingDays, '09:00', '18:00']
     );
+
+    // Delete the used code
+    await pool.query('DELETE FROM otp_codes WHERE email = $1', [email]);
     
     const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id, email } });
@@ -183,7 +287,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/users/me', authenticateToken, async (req: any, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", whatsapp, schedule_overrides as "scheduleOverrides", role FROM users WHERE id = $1',
+      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", role FROM users WHERE id = $1',
       [req.user.id]
     );
     const user = result.rows[0];
@@ -196,6 +300,19 @@ app.get('/api/users/me', authenticateToken, async (req: any, res) => {
       try { user.scheduleOverrides = JSON.parse(user.scheduleOverrides); } catch(e) {}
     }
     res.json(user);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/users/google-token', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { token } = req.body;
+    await pool.query(
+      'UPDATE users SET google_access_token = $1 WHERE id = $2',
+      [token, req.user.id]
+    );
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -390,6 +507,44 @@ app.post('/api/provider/:slug/book', async (req, res) => {
       'INSERT INTO appointments (id, provider_id, client_name, client_whatsapp, client_phone, client_email, services, total_price, total_duration, buffer_time, booking_source, status, start_at, end_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
       [id, providerId, clientName, clientWhatsApp, clientPhone, clientEmail, JSON.stringify(services || []), totalPrice, totalDuration, bufferTime || 0, bookingSource, status || 'Pendente', startAt, endAt]
     );
+
+    // Sync to Google Calendar if provider has connected it
+    try {
+      const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [providerId]);
+      const googleAccessToken = providerRes.rows[0]?.google_access_token;
+      if (googleAccessToken) {
+        const event = {
+          summary: `Agendamento: ${clientName}`,
+          description: `Cliente: ${clientName}\nEmail: ${clientEmail || 'N/A'}\nWhatsApp: ${clientWhatsApp || 'N/A'}\nServiços: ${(services || []).map((s: any) => s.name).join(', ')}`,
+          start: {
+            dateTime: startAt,
+            timeZone: 'America/Sao_Paulo',
+          },
+          end: {
+            dateTime: endAt,
+            timeZone: 'America/Sao_Paulo',
+          },
+          attendees: clientEmail ? [{ email: clientEmail }] : [],
+        };
+
+        const gCalRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(event),
+        });
+
+        if (!gCalRes.ok) {
+           console.error('Failed to create GCal event:', await gCalRes.text());
+        } else {
+           console.log('GCal event created successfully.');
+        }
+      }
+    } catch (gcalErr) {
+       console.error("Error creating Google Calendar event:", gcalErr);
+    }
       
     res.json({ success: true, appointmentId: id });
   } catch (error: any) {

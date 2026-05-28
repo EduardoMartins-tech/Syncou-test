@@ -23,8 +23,10 @@ export function LandingPage() {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authStep, setAuthStep] = useState<'form' | 'otp'>('form');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasMinLength = password.length >= 6;
@@ -64,10 +66,29 @@ export function LandingPage() {
           setIsAuthModalOpen(false);
         }
       } else {
-        const success = await register(cleanEmail, password);
-        if (success) {
-          toast.success('Conta criada com sucesso!');
-          setIsAuthModalOpen(false);
+        if (authStep === 'form') {
+          const res = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            toast.success('Código enviado! Verifique seu e-mail (ou o console).');
+            setAuthStep('otp');
+          } else {
+            toast.error(data.error || 'Erro ao enviar código.');
+          }
+        } else {
+          if (!otpCode) {
+            toast.error('Preencha o código.');
+            return;
+          }
+          const success = await register(cleanEmail, password, otpCode);
+          if (success) {
+            toast.success('Conta criada com sucesso!');
+            setIsAuthModalOpen(false);
+          }
         }
       }
     } catch (error: any) {
@@ -79,8 +100,10 @@ export function LandingPage() {
 
   const openAuthModal = (mode: 'login' | 'register') => {
     setAuthMode(mode);
+    setAuthStep('form');
     setEmail('');
     setPassword('');
+    setOtpCode('');
     setIsAuthModalOpen(true);
   };
 
@@ -215,54 +238,77 @@ export function LandingPage() {
 
             <div className="space-y-4">
               <form onSubmit={handleEmailAuthSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="auth-email" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    E-mail
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input
-                      id="auth-email"
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="voce@exemplo.com"
-                      className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
-                    />
+                {authMode === 'register' && authStep === 'otp' ? (
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-right-4">
+                    <Label htmlFor="auth-otp" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      Código de Verificação
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                      <Input
+                        id="auth-otp"
+                        type="text"
+                        required
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        placeholder="Digite o código (ex: 123456)"
+                        className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">Enviamos um código para {email}.</p>
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="auth-password" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
-                    Senha
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input
-                      id="auth-password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={authMode === 'register' ? "Mínimo 6 caracteres" : "Sua senha"}
-                      className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
-                    />
-                  </div>
-                  
-                  {authMode === 'register' && (
-                    <div className="pt-2 space-y-1.5">
-                      <div className="flex items-center gap-2 text-xs">
-                        {hasMinLength ? <Check className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-slate-500" />}
-                        <span className={hasMinLength ? "text-slate-500" : "text-slate-300"}>Mínimo de 6 caracteres</span>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="auth-email" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        E-mail
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          id="auth-email"
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="voce@exemplo.com"
+                          className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="auth-password" className="text-slate-350 text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Senha
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          id="auth-password"
+                          type="password"
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder={authMode === 'register' ? "Mínimo 6 caracteres" : "Sua senha"}
+                          className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-650 pl-10 focus-visible:ring-purple-600 focus:border-purple-600 h-11"
+                        />
+                      </div>
+                      
+                      {authMode === 'register' && (
+                        <div className="pt-2 space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs">
+                            {hasMinLength ? <Check className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-slate-500" />}
+                            <span className={hasMinLength ? "text-slate-500" : "text-slate-300"}>Mínimo de 6 caracteres</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting || (authMode === 'register' && !isValidPassword)}
+                  disabled={isSubmitting || (authMode === 'register' && authStep === 'form' && !isValidPassword)}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold h-11 transition-all flex items-center justify-center gap-1.5 mt-2"
                 >
                   {isSubmitting ? (
@@ -272,8 +318,10 @@ export function LandingPage() {
                     </>
                   ) : authMode === 'login' ? (
                     'Entrar'
+                  ) : authStep === 'otp' ? (
+                    'Confirmar e Criar Conta'
                   ) : (
-                    'Criar Conta'
+                    'Continuar'
                   )}
                 </Button>
               </form>
