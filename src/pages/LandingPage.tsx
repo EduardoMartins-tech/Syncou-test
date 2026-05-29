@@ -33,7 +33,10 @@ export function LandingPage() {
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   const hasMinLength = password.length >= 6;
-  const isValidPassword = hasMinLength; 
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const isValidPassword = hasMinLength && hasUppercase && hasNumber && hasSpecialChar;
 
   const handleGoogleSignIn = async () => {
     setIsGoogleSubmitting(true);
@@ -356,10 +359,22 @@ export function LandingPage() {
                       </div>
                       
                       {authMode === 'register' && (
-                        <div className="pt-2 space-y-1.5">
+                        <div className="pt-2 space-y-1.5 flex flex-col gap-1 mt-1">
                           <div className="flex items-center gap-2 text-xs">
-                            {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <div className="w-3.5 h-3.5 rounded-full border border-[#5B4F81]" />}
+                            {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <div className="w-3.5 h-3.5 rounded-full border border-[#5B4F81] shrink-0" />}
                             <span className={hasMinLength ? "text-emerald-400" : "text-[#5B4F81]"}>Mínimo de 6 caracteres</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {hasUppercase ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <div className="w-3.5 h-3.5 rounded-full border border-[#5B4F81] shrink-0" />}
+                            <span className={hasUppercase ? "text-emerald-400" : "text-[#5B4F81]"}>1 letra maiúscula</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <div className="w-3.5 h-3.5 rounded-full border border-[#5B4F81] shrink-0" />}
+                            <span className={hasNumber ? "text-emerald-400" : "text-[#5B4F81]"}>1 número</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {hasSpecialChar ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <div className="w-3.5 h-3.5 rounded-full border border-[#5B4F81] shrink-0" />}
+                            <span className={hasSpecialChar ? "text-emerald-400" : "text-[#5B4F81]"}>1 caractere especial</span>
                           </div>
                         </div>
                       )}
