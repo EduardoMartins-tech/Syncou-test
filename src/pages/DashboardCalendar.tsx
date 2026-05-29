@@ -130,6 +130,16 @@ interface Service {
   title?: string;
 }
 
+const CustomAgendaEvent = ({ event }: any) => {
+  const isConfirmed = event.isConfirmed;
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isConfirmed ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`} />
+      <span className="font-medium text-[#e8eaed]">{event.title}</span>
+    </div>
+  );
+};
+
 export function DashboardCalendar() {
   const { getAuthHeaders } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -398,9 +408,10 @@ export function DashboardCalendar() {
             }
             .rbc-agenda-view table.rbc-agenda-table tbody > tr {
               transition: background-color 0.2s;
+              background-color: transparent !important;
             }
             .rbc-agenda-view table.rbc-agenda-table tbody > tr:hover {
-              background-color: rgba(255,255,255,0.03);
+              background-color: rgba(255,255,255,0.03) !important;
             }
             .rbc-agenda-view table.rbc-agenda-table tbody > tr > td + td {
               border-left: none;
@@ -422,10 +433,11 @@ export function DashboardCalendar() {
             .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
               padding: 16px;
               color: #e8eaed;
+              background-color: transparent !important;
             }
             .rbc-agenda-date-cell {
               font-weight: 500;
-              color: #e8eaed;
+              color: #8B5CF6;
             }
             .rbc-agenda-time-cell {
               font-size: 0.85rem;
@@ -467,7 +479,10 @@ export function DashboardCalendar() {
                 min={new Date(0, 0, 0, 6, 0, 0)} // Start at 6 AM
                 max={new Date(0, 0, 0, 22, 0, 0)} // End at 10 PM
                 components={{
-                  toolbar: CustomToolbar
+                  toolbar: CustomToolbar,
+                  agenda: {
+                    event: CustomAgendaEvent,
+                  }
                 }}
               />
               <div className="flex justify-start sm:justify-end items-center gap-4 pt-4 border-t border-[#2D214F] text-sm font-medium">
