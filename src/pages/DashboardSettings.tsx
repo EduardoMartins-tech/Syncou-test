@@ -25,6 +25,7 @@ const slugSchema = z.object({
   workingHoursStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Use formato HH:MM (ex: 09:00)"),
   workingHoursEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Use formato HH:MM (ex: 18:00)"),
   workingDays: z.array(z.number()),
+  workOnHolidays: z.boolean().optional(),
   whatsapp: z.string().optional(),
   whatsappMessageTemplate: z.string().optional(),
 });
@@ -237,6 +238,7 @@ export function DashboardSettings() {
           workingHoursStart: currentUser.workingHoursStart || '09:00',
           workingHoursEnd: currentUser.workingHoursEnd || '18:00',
           workingDays: parsedWorkingDays,
+          workOnHolidays: currentUser.workOnHolidays || false,
           whatsapp: currentUser.whatsapp || '',
           whatsappMessageTemplate: currentUser.whatsappMessageTemplate || '',
         });
@@ -256,6 +258,7 @@ export function DashboardSettings() {
         workingHoursStart: data.workingHoursStart,
         workingHoursEnd: data.workingHoursEnd,
         workingDays: JSON.stringify(data.workingDays),
+        workOnHolidays: data.workOnHolidays,
         whatsapp: cleanWhatsapp,
         whatsappMessageTemplate: data.whatsappMessageTemplate,
       };
@@ -540,6 +543,33 @@ export function DashboardSettings() {
                    })}
                  </div>
                  {errors.workingDays && <p className="text-red-400 text-sm">{errors.workingDays.message}</p>}
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-[#2D214F]/50">
+                 <div className="flex flex-col gap-2">
+                   <Label className="text-[#E2D9F3]">Feriados Nacionais</Label>
+                   <p className="text-sm text-[#9B8FC0]">
+                     Deseja permitir agendamentos em datas que caem em feriados nacionais fixos (como 01/01, 25/12, etc.)?
+                   </p>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <button
+                     type="button"
+                     onClick={() => setValue('workOnHolidays', !watch('workOnHolidays'), { shouldDirty: true, shouldValidate: true })}
+                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-[#0A0713] ${
+                       watch('workOnHolidays') ? 'bg-[#8B5CF6]' : 'bg-[#2D214F]'
+                     }`}
+                   >
+                     <span
+                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                         watch('workOnHolidays') ? 'translate-x-6' : 'translate-x-1'
+                       }`}
+                     />
+                   </button>
+                   <span className="text-sm text-[#E2D9F3]">
+                     {watch('workOnHolidays') ? 'Trabalhar normalmente nos feriados' : 'Não permitir agendamentos em feriados'}
+                   </span>
+                 </div>
               </div>
             </CardContent>
           </Card>

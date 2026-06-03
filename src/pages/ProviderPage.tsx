@@ -129,6 +129,24 @@ export function ProviderPage() {
     let isClosed = false;
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
+
+    // National holidays logic (Brazil)
+    const holidays = [
+      '01-01', // Confraternização Universal
+      '04-21', // Tiradentes
+      '05-01', // Dia do Trabalhador
+      '09-07', // Independência do Brasil
+      '10-12', // Nossa Sra. Aparecida
+      '11-02', // Finados
+      '11-15', // Proclamação da República
+      '12-25'  // Natal
+    ];
+    const monthDay = format(selectedDate, 'MM-dd');
+    
+    if (holidays.includes(monthDay) && !provider.workOnHolidays) {
+       isClosed = true;
+    }
+
     if (provider.scheduleOverrides && provider.scheduleOverrides[dateKey]) {
       const override = provider.scheduleOverrides[dateKey];
       if (override.isClosed) {
@@ -361,6 +379,23 @@ export function ProviderPage() {
                 onSelect={(date: Date | undefined) => { if(date) setSelectedDate(date)}}
                 disabled={(date) => {
                   if (isBeforeToday(date)) return true;
+                  
+                  // National holidays logic (Brazil)
+                  const holidays = [
+                    '01-01', // Confraternização Universal
+                    '04-21', // Tiradentes
+                    '05-01', // Dia do Trabalhador
+                    '09-07', // Independência do Brasil
+                    '10-12', // Nossa Sra. Aparecida
+                    '11-02', // Finados
+                    '11-15', // Proclamação da República
+                    '12-25'  // Natal
+                  ];
+                  const monthDay = format(date, 'MM-dd');
+                  if (holidays.includes(monthDay) && !provider?.workOnHolidays) {
+                     return true;
+                  }
+
                   const dateKey = format(date, 'yyyy-MM-dd');
                   if (provider?.scheduleOverrides && provider.scheduleOverrides[dateKey]) {
                     return false;

@@ -10,6 +10,7 @@ import { DashboardHome } from './pages/DashboardHome';
 import { DashboardSettings } from './pages/DashboardSettings';
 import { DashboardCalendar } from './pages/DashboardCalendar';
 import { NotFound } from './pages/NotFound';
+import { TermsPage } from './pages/TermsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 import { Toaster } from '@/components/ui/sonner';
@@ -26,6 +27,10 @@ const router = createBrowserRouter([
   {
     path: "/reset-password",
     element: <ResetPassword />,
+  },
+  {
+    path: "/termos",
+    element: <TermsPage />,
   },
   {
     path: "/p/:slug",

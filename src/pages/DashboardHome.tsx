@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check, CheckCircle2, XCircle } from 'lucide-react';
+import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check, CheckCircle2, XCircle, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { syncWithGoogleCalendar } from '../lib/calendar';
 import { googleSignInForCalendar } from '../lib/firebase';
@@ -287,7 +288,10 @@ export function DashboardHome() {
             endAt: endAtTime 
          })
       });
-      if (!res.ok) throw new Error('fail');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || 'Erro ao remarcar');
+      }
       toast.success('Agendamento remarcado com sucesso!');
       fetchAppointments();
       setIsRescheduleModalOpen(false);
@@ -307,9 +311,9 @@ export function DashboardHome() {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Erro ao remarcar o agendamento.');
+      toast.error(err.message || 'Erro ao remarcar o agendamento.');
     }
   };
 
@@ -415,6 +419,69 @@ export function DashboardHome() {
     })
     .reduce((sum, a) => sum + (Number(a.totalPrice) || 0), 0);
 
+  const getWeeklyData = () => {
+    const data = [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateString = date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }).replace('.', '');
+      
+      const count = appointments.filter(a => {
+        if (a.status === 'cancelled' || a.status === 'Cancelado') return false;
+        const aptDate = new Date(a.startAt || a.date || '');
+        return aptDate.getDate() === date.getDate() && aptDate.getMonth() === date.getMonth() && aptDate.getFullYear() === date.getFullYear();
+      }).length;
+      
+      data.push({ name: dateString, appointments: count });
+    }
+    return data;
+  };
+
+  const exportToCSV = () => {
+    // Columns: Nome do Cliente, Data, Hora, Serviço, Valor
+    const headers = ['Nome do Cliente', 'Data', 'Hora', 'Serviço', 'Valor'];
+    const rows = filteredAppointments.map(apt => {
+      // Handle missing fields safely
+      const name = apt.clientName || 'N/A';
+      
+      let date = 'N/A';
+      let time = 'N/A';
+      if (apt.startAt) {
+        const d = new Date(apt.startAt);
+        date = d.toLocaleDateString('pt-BR');
+        time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      } else if (apt.date && apt.time) {
+        date = new Date(apt.date).toLocaleDateString('pt-BR');
+        time = apt.time;
+      }
+      
+      const service = apt.serviceName || 'N/A';
+      const price = (Number(apt.totalPrice) || 0).toFixed(2);
+      
+      // Escape commas by quoting
+      return [
+        `"${name.replace(/"/g, '""')}"`,
+        `"${date}"`,
+        `"${time}"`,
+        `"${service.replace(/"/g, '""')}"`,
+        `"${price}"`
+      ].join(',');
+    });
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `agendamentos_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Arquivo CSV exportado com sucesso!');
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 overflow-hidden">
       <motion.div 
@@ -449,6 +516,55 @@ export function DashboardHome() {
           )}
         </div>
       </motion.div>
+
+      {/* Weekly Activity Chart */}
+      {!isFetchingAppointments && (
+        <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+           className="bg-[#130E20] border border-[#2D214F] rounded-2xl p-6 shadow-sm"
+        >
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-white">Atividade Semanal</h3>
+            <p className="text-sm text-[#9B8FC0]">Agendamentos confirmados/pendentes (últimos 7 dias)</p>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={getWeeklyData()} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2D214F" vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#5B4F81" 
+                  fontSize={12} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  dy={10}
+                />
+                <YAxis 
+                  stroke="#5B4F81" 
+                  fontSize={12} 
+                  tickLine={false} 
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#2D214F', opacity: 0.4 }}
+                  contentStyle={{ backgroundColor: '#1A1333', border: '1px solid #2D214F', borderRadius: '8px', color: '#fff' }}
+                  itemStyle={{ color: '#8B5CF6', fontWeight: 'bold' }}
+                />
+                <Bar 
+                  dataKey="appointments" 
+                  name="Agendamentos"
+                  fill="#8B5CF6" 
+                  radius={[4, 4, 0, 0]} 
+                  maxBarSize={50}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
 
       {/* Metrics Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -551,6 +667,10 @@ export function DashboardHome() {
                  <option value="Confirmado">Confirmados</option>
                  <option value="Cancelado">Cancelados</option>
                </select>
+               <Button onClick={exportToCSV} variant="outline" className="border-[#2D214F] text-[#E2D9F3] hover:text-white hover:bg-[#2D214F]/50 h-9 px-3 shrink-0">
+                 <Download className="w-4 h-4 mr-2" />
+                 Exportar CSV
+               </Button>
              </div>
            </div>
 
@@ -594,14 +714,18 @@ export function DashboardHome() {
                    )}
                 </div>
               ) : (
-                filteredAppointments.map((apt, index) => (
+                <AnimatePresence mode="popLayout">
+                  {filteredAppointments.map((apt, index) => (
                   <motion.div
                     key={apt.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    whileHover={{ scale: 1.01 }}
                     transition={{ duration: 0.4, delay: 0.1 + (index * 0.05), ease: [0.16, 1, 0.3, 1] }}
+                    layout
                   >
-                    <Card className="bg-[#130E20] border-[#2D214F] shadow-sm hover:border-[#4B3B7A] transition-colors">
+                    <Card className="bg-[#130E20] border-[#2D214F] shadow-sm hover:border-[#4B3B7A] transition-all">
                     <CardContent className="p-5">
                       <div className="flex justify-between items-start mb-4">
                         <div>
@@ -725,7 +849,8 @@ export function DashboardHome() {
                     </CardContent>
                   </Card>
                   </motion.div>
-                ))
+                ))}
+                </AnimatePresence>
               )}
            </div>
         </div>

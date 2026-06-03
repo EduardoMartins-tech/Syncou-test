@@ -167,6 +167,7 @@ async function runMigrations() {
       -- Alter table explicitly in case it already exists but without the new column
       ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_message_template TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS work_on_holidays BOOLEAN DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
@@ -378,7 +379,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/users/me', authenticateToken, async (req: any, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role FROM users WHERE id = $1',
+      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role FROM users WHERE id = $1',
       [req.user.id]
     );
     const user = result.rows[0];
@@ -542,8 +543,9 @@ app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
         whatsapp = COALESCE($7, whatsapp),
         schedule_overrides = COALESCE($8, schedule_overrides),
         avatar_url = COALESCE($9, avatar_url),
-        whatsapp_message_template = COALESCE($10, whatsapp_message_template)
-      WHERE id = $11
+        whatsapp_message_template = COALESCE($10, whatsapp_message_template),
+        work_on_holidays = COALESCE($11, work_on_holidays)
+      WHERE id = $12
     `, [
       data.slug ?? null, 
       data.displayName ?? null, 
@@ -555,6 +557,7 @@ app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
       scheduleOverridesStr,
       data.avatarUrl ?? null,
       data.whatsappMessageTemplate ?? null,
+      data.workOnHolidays ?? null,
       id
     ]);
     
@@ -622,6 +625,80 @@ app.put('/api/appointments/:id', authenticateToken, async (req: any, res) => {
       const { status, cancelReason, startAt, endAt } = req.body;
       
       if (startAt && endAt) {
+         // Validate working hours
+         const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", schedule_overrides as "scheduleOverrides" FROM users WHERE id = $1', [req.user.id]);
+         if (providerUser.rows.length > 0) {
+           const providerRow = providerUser.rows[0];
+           
+           try {
+             if (providerRow.scheduleOverrides) {
+               providerRow.scheduleOverrides = JSON.parse(providerRow.scheduleOverrides);
+             }
+           } catch(e) {}
+       
+           let workingStart = providerRow.workingHoursStart || "09:00";
+           let workingEnd = providerRow.workingHoursEnd || "18:00";
+           let isClosed = false;
+       
+           const startDateObj = new Date(Number(startAt));
+           const pad = (n: number) => n.toString().padStart(2, '0');
+           const dateKey = `${startDateObj.getFullYear()}-${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
+       
+           // National holidays logic (Brazil)
+           const holidays = [
+             '01-01', // Confraternização Universal
+             '04-21', // Tiradentes
+             '05-01', // Dia do Trabalhador
+             '09-07', // Independência do Brasil
+             '10-12', // Nossa Sra. Aparecida
+             '11-02', // Finados
+             '11-15', // Proclamação da República
+             '12-25'  // Natal
+           ];
+           const monthDay = `${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
+           
+           if (holidays.includes(monthDay) && !providerRow.workOnHolidays) {
+              isClosed = true;
+           }
+
+           if (providerRow.scheduleOverrides && providerRow.scheduleOverrides[dateKey]) {
+             const override = providerRow.scheduleOverrides[dateKey];
+             if (override.isClosed) {
+               isClosed = true;
+             } else {
+               workingStart = override.start;
+               workingEnd = override.end;
+             }
+           }
+       
+           if (isClosed) {
+             return res.status(400).json({ error: 'Você não está disponível (fechado/folga) nesta data.' });
+           }
+       
+           const [endHour, endMin] = workingEnd.split(':').map(Number);
+           const endOfShift = new Date(Number(startAt));
+           endOfShift.setHours(endHour, endMin, 0, 0);
+       
+           if (Number(endAt) > endOfShift.getTime()) {
+             return res.status(400).json({ error: 'O agendamento excede seu horário de trabalho.' });
+           }
+         }
+
+         // Check for overlapping appointments
+         const overlapCheck = await pool.query(
+           `SELECT id FROM appointments 
+            WHERE provider_id = $1 
+            AND id != $2
+            AND status NOT IN ('cancelled', 'Cancelado')
+            AND start_at < $3 
+            AND end_at > $4`,
+           [req.user.id, req.params.id, Number(endAt), Number(startAt)]
+         );
+     
+         if (overlapCheck.rows.length > 0) {
+           return res.status(400).json({ error: 'Conflito de agenda: Você já possui outro compromisso neste horário.' });
+         }
+
          // Reschedule scenario (could also include status change if we want)
          await pool.query(
            'UPDATE appointments SET status = COALESCE($1, status), cancel_reason = COALESCE($2, cancel_reason), start_at = $3, end_at = $4 WHERE id = $5 AND provider_id = $6',
@@ -705,7 +782,7 @@ app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: 
 app.get('/api/provider/:slug', async (req, res) => {
   try {
     const resultUser = await pool.query(
-      'SELECT id, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", whatsapp, schedule_overrides as "scheduleOverrides" FROM users WHERE slug = $1',
+      'SELECT id, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", whatsapp, schedule_overrides as "scheduleOverrides" FROM users WHERE slug = $1',
       [req.params.slug]
     );
     const user = resultUser.rows[0];
@@ -755,7 +832,7 @@ app.post('/api/provider/:slug/book', async (req, res) => {
     const { providerId, clientName, clientWhatsApp, clientPhone, clientEmail, services, totalPrice, totalDuration, bufferTime, bookingSource, status, startAt, endAt } = req.body;
     
     // Validate working hours
-    const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken" FROM users WHERE id = $1', [providerId]);
+    const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken" FROM users WHERE id = $1', [providerId]);
     if (providerUser.rows.length === 0) {
       return res.status(404).json({ error: 'Provedor não encontrado' });
     }
@@ -775,6 +852,23 @@ app.post('/api/provider/:slug/book', async (req, res) => {
     const pad = (n: number) => n.toString().padStart(2, '0');
     // Using local date values of the server representation of startAt
     const dateKey = `${startDateObj.getFullYear()}-${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
+
+    // National holidays logic (Brazil)
+    const holidays = [
+      '01-01', // Confraternização Universal
+      '04-21', // Tiradentes
+      '05-01', // Dia do Trabalhador
+      '09-07', // Independência do Brasil
+      '10-12', // Nossa Sra. Aparecida
+      '11-02', // Finados
+      '11-15', // Proclamação da República
+      '12-25'  // Natal
+    ];
+    const monthDay = `${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
+    
+    if (holidays.includes(monthDay) && !providerRow.workOnHolidays) {
+       isClosed = true;
+    }
 
     if (providerRow.scheduleOverrides && providerRow.scheduleOverrides[dateKey]) {
       const override = providerRow.scheduleOverrides[dateKey];
@@ -796,6 +890,20 @@ app.post('/api/provider/:slug/book', async (req, res) => {
 
     if (Number(endAt) > endOfShift.getTime()) {
       return res.status(400).json({ error: 'A duração dos serviços excede o horário de trabalho do provedor.' });
+    }
+
+    // Check for overlapping appointments
+    const overlapCheck = await pool.query(
+      `SELECT id FROM appointments 
+       WHERE provider_id = $1 
+       AND status NOT IN ('cancelled', 'Cancelado')
+       AND start_at < $2 
+       AND end_at > $3`,
+      [providerId, Number(endAt), Number(startAt)]
+    );
+
+    if (overlapCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Conflito de agenda: Já existe um agendamento para este horário.' });
     }
 
     const id = generateId();

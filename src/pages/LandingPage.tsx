@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Share2, CalendarDays, Settings, Mail, Lock, Loader2, XCircle, Check } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Share2, CalendarDays, Settings, Mail, Lock, Loader2, XCircle, Check, Star } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Logo } from '../components/Logo';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ export function LandingPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
@@ -39,6 +40,11 @@ export function LandingPage() {
   const isValidPassword = hasMinLength && hasUppercase && hasNumber && hasSpecialChar;
 
   const handleGoogleSignIn = async () => {
+    if (authMode === 'register' && !hasAcceptedTerms) {
+      toast.error('Você precisa aceitar os Termos de Serviço para criar uma conta.');
+      return;
+    }
+    
     setIsGoogleSubmitting(true);
     try {
       const result = await googleSignInBasic();
@@ -84,6 +90,11 @@ export function LandingPage() {
     
     if (authMode === 'register' && !isValidPassword) {
       toast.error('Por favor, atenda a todos os critérios da senha.');
+      return;
+    }
+
+    if (authMode === 'register' && !hasAcceptedTerms) {
+      toast.error('Você precisa aceitar os Termos de Serviço para criar uma conta.');
       return;
     }
 
@@ -134,6 +145,7 @@ export function LandingPage() {
     setEmail('');
     setPassword('');
     setOtpCode('');
+    setHasAcceptedTerms(false);
     setIsAuthModalOpen(true);
   };
 
@@ -155,28 +167,144 @@ export function LandingPage() {
         </div>
       </header>
 
-      <main className="pt-32 pb-16 px-4 overflow-hidden">
+      <main className="pt-32 pb-16 px-4 overflow-hidden relative">
+        {/* Glow Background */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-violet-600/20 blur-[120px] rounded-full pointer-events-none" />
+
         <motion.section 
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-4xl mx-auto text-center mb-24"
+          className="max-w-5xl mx-auto text-center mb-24 relative z-10"
         >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-sm font-medium mb-8">
+            <span className="flex h-2 w-2 rounded-full bg-violet-500 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+            </span>
+            Acesso Antecipado
+          </div>
+
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 text-white leading-[1.1]">
-            Agendamentos,<br />
-            <span className="text-violet-400">sem atrito.</span>
+            Seus agendamentos,<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">organizados de verdade.</span>
           </h1>
           <p className="text-xl text-[#9B8FC0] mb-10 max-w-2xl mx-auto font-normal leading-relaxed">
-            A plataforma com o design mais elegante do mercado para prestadores de serviço. 
-            Crie sua página pública e deixe seus clientes agendarem automaticamente.
+            Seja um dos primeiros a experimentar uma plataforma criada para simplificar sua rotina. 
+            Crie sua página, libere seus horários e foque no que você faz de melhor.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white w-full sm:w-auto text-lg h-14 px-8 rounded-lg shadow-[0_0_20px_rgba(139,92,246,0.25)] font-medium transition-all" onClick={() => openAuthModal('register')}>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+            <Button size="lg" className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white w-full sm:w-auto text-lg h-14 px-8 rounded-lg shadow-[0_0_30px_rgba(139,92,246,0.25)] font-medium transition-all" onClick={() => openAuthModal('register')}>
               Começar Gratuitamente
-              <ArrowRight className="ml-2 w-5 h-5 pointer-events-none opacity-80" />
+              <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
+            <div className="flex items-center justify-center gap-2 text-sm text-[#5B4F81] font-medium">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400/80" />
+              <span>Não pedimos cartão de crédito</span>
+            </div>
           </div>
+          
+
         </motion.section>
+
+        {/* Browser Mockup */}
+        <motion.div 
+          initial={{ opacity: 0, y: 60 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-5xl mx-auto relative z-10 mb-32"
+        >
+          <div className="rounded-xl overflow-hidden border border-[#2D214F] bg-[#130E20] shadow-2xl shadow-violet-900/20 ring-1 ring-white/10">
+            {/* Header */}
+            <div className="h-12 bg-[#1A1333] border-b border-[#2D214F] flex items-center px-4 gap-2">
+              <div className="flex gap-1.5 mr-4">
+                <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
+              </div>
+              <div className="flex-1 flex justify-center">
+                <div className="bg-[#0B0914] border border-[#2D214F] rounded-md px-3 py-1 flex items-center gap-2 text-xs text-[#5B4F81] w-48 sm:w-64 max-w-full shadow-inner">
+                  <Lock className="w-3 h-3 text-emerald-400/70" />
+                  <span>syncou.app/seu-nome</span>
+                </div>
+              </div>
+              <div className="w-10"></div>
+            </div>
+            
+            {/* App Preview Content (Detailed UI Mockup) */}
+            <div className="h-[350px] md:h-[450px] bg-[#0B0914] relative overflow-hidden flex">
+              {/* Sidebar Mockup */}
+              <div className="w-48 bg-[#100C18] border-r border-[#2D214F] p-5 hidden md:flex flex-col gap-3 relative z-10">
+                <div className="h-5 w-24 bg-[#2D214F] rounded-md mb-6" />
+                <div className="h-9 w-full bg-violet-500/15 text-violet-400 rounded-lg flex items-center px-3 gap-3 border border-violet-500/30">
+                   <div className="w-4 h-4 bg-violet-400/50 rounded flex-shrink-0" />
+                   <div className="h-2 w-16 bg-violet-400/50 rounded-sm" />
+                </div>
+                <div className="h-9 w-full bg-[#1A1333]/50 rounded-lg flex items-center px-3 gap-3 hover:bg-[#1A1333] transition-colors border border-transparent">
+                   <div className="w-4 h-4 bg-[#5B4F81] rounded flex-shrink-0" />
+                   <div className="h-2 w-14 bg-[#5B4F81] rounded-sm" />
+                </div>
+                <div className="h-9 w-full bg-[#1A1333]/50 rounded-lg flex items-center px-3 gap-3 hover:bg-[#1A1333] transition-colors border border-transparent">
+                   <div className="w-4 h-4 bg-[#5B4F81] rounded flex-shrink-0" />
+                   <div className="h-2 w-20 bg-[#5B4F81] rounded-sm" />
+                </div>
+              </div>
+              
+              {/* Main Content Mockup */}
+              <div className="flex-1 p-6 relative z-10 flex flex-col">
+                 <div className="flex justify-between items-center mb-8">
+                    <div className="space-y-2">
+                       <div className="h-6 w-40 bg-[#E2D9F3] rounded-md" />
+                       <div className="h-3 w-64 bg-[#5B4F81] rounded-sm" />
+                    </div>
+                    <div className="h-10 w-10 bg-gradient-to-tr from-violet-500 to-fuchsia-500 rounded-full shadow-lg ring-2 ring-white/10" />
+                 </div>
+                 
+                 {/* Stats Cards */}
+                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                    {[
+                      { top: 'Faturamento', bottom: 'bg-emerald-400', w: 'w-24', icon: 'bg-emerald-400/20' },
+                      { top: 'Agendamentos', bottom: 'bg-violet-400', w: 'w-16', icon: 'bg-violet-400/20' },
+                      { top: 'Clientes', bottom: 'bg-amber-400', w: 'w-20', icon: 'bg-amber-400/20', hidden: 'hidden md:flex' }
+                    ].map((stat, i) => (
+                      <div key={i} className={`h-28 bg-[#130E20] border border-[#2D214F] rounded-xl p-5 flex flex-col justify-between ${stat.hidden || 'flex'}`}>
+                        <div className="flex justify-between items-start">
+                          <div className="h-3 w-20 bg-[#5B4F81] rounded-sm" />
+                          <div className={`w-6 h-6 rounded-md ${stat.icon}`} />
+                        </div>
+                        <div className={`h-7 ${stat.bottom} rounded-md ${stat.w}`} />
+                      </div>
+                    ))}
+                 </div>
+                 
+                 {/* Table / List Mockup */}
+                 <div className="bg-[#130E20] border border-[#2D214F] rounded-xl p-5 flex-1 flex flex-col">
+                    <div className="h-4 w-32 bg-[#E2D9F3] rounded-sm mb-6" />
+                    <div className="space-y-3 flex-1">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-12 w-full bg-[#1A1333]/50 rounded-lg border border-[#2D214F]/50 flex items-center px-4 justify-between group hover:bg-[#1A1333] transition-colors">
+                          <div className="flex items-center gap-4">
+                             <div className={`w-2.5 h-2.5 rounded-full ${i === 1 ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : i === 2 ? 'bg-amber-400' : 'bg-violet-400'}`} />
+                             <div>
+                               <div className="h-3 w-24 bg-[#E2D9F3] rounded-sm mb-2" />
+                               <div className="h-2 w-16 bg-[#5B4F81] rounded-sm" />
+                             </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <div className="h-6 w-16 bg-[#2D214F] rounded-md hidden sm:block" />
+                            <div className="h-6 w-20 bg-[#2D214F] rounded-md" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                 </div>
+              </div>
+              
+              {/* Decorative elements / Glow behind UI */}
+              <div className="absolute top-10 -right-20 w-64 h-64 bg-fuchsia-600/10 blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute bottom-10 -left-20 w-80 h-80 bg-violet-600/10 blur-[100px] rounded-full pointer-events-none" />
+            </div>
+          </div>
+        </motion.div>
 
         <section className="max-w-5xl mx-auto py-16">
           <motion.h2 
@@ -186,24 +314,35 @@ export function LandingPage() {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="text-3xl font-semibold text-center mb-16 text-white tracking-tight"
           >
-            Como funciona
+            Tudo que você precisa em um só lugar
           </motion.h2>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-12 gap-6">
+            
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="md:col-span-8"
             >
-              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm h-full">
-                <CardContent className="pt-8 text-center p-8">
-                  <div className="w-16 h-16 bg-[#1A1333] border border-[#2D214F] rounded-xl flex items-center justify-center mx-auto mb-6 text-violet-400 shadow-sm">
-                    <Settings className="w-7 h-7" strokeWidth={1.5} />
+              <Card className="border border-[#2D214F] bg-gradient-to-br from-[#130E20] to-[#0A0713] shadow-sm h-full group overflow-hidden relative">
+                <CardContent className="p-8 h-full flex flex-col justify-center">
+                  <div className="w-12 h-12 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-center mb-6 text-violet-400">
+                    <Share2 className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3 text-white tracking-tight">1. Configurar</h3>
-                  <p className="text-[#9B8FC0] text-sm leading-relaxed">
-                    Defina seu perfil, crie sua área personalizada e liste os serviços que você oferece com preços e durações.
+                  <h3 className="text-2xl font-semibold mb-3 text-white tracking-tight">Sua página exclusiva</h3>
+                  <p className="text-[#9B8FC0] leading-relaxed max-w-lg mb-8">
+                    Crie uma página de agendamentos profissional que reflete a sua marca. Compartilhe o link no seu Instagram, WhatsApp ou onde preferir. Otimizado para qualquer dispositivo.
                   </p>
+                  
+                  {/* Visual mockup inside card */}
+                  <div className="mt-auto absolute -bottom-10 -right-10 w-[70%] sm:w-[50%] h-[200px] bg-[#1A1333] border border-[#2D214F] rounded-tl-xl p-4 opacity-50 group-hover:opacity-100 transition-opacity duration-500 transform group-hover:-translate-y-2 group-hover:-translate-x-2">
+                     <div className="h-full border border-violet-500/20 bg-[#130E20] rounded-lg p-3 space-y-3">
+                       <div className="w-full h-8 bg-[#2D214F]/40 rounded-md" />
+                       <div className="w-3/4 h-4 bg-[#2D214F]/40 rounded-md" />
+                       <div className="w-full h-12 bg-violet-500/20 border border-violet-500/30 rounded-md mt-4" />
+                     </div>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -213,16 +352,20 @@ export function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="md:col-span-4"
             >
-              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm h-full">
-                <CardContent className="pt-8 text-center p-8">
-                  <div className="w-16 h-16 bg-[#1A1333] border border-[#2D214F] rounded-xl flex items-center justify-center mx-auto mb-6 text-violet-400 shadow-sm">
-                    <Share2 className="w-7 h-7" strokeWidth={1.5} />
+              <Card className="border border-[#2D214F] bg-gradient-to-bl from-[#130E20] to-[#0A0713] shadow-sm h-full overflow-hidden relative">
+                <CardContent className="p-8 h-full flex flex-col items-start justify-center">
+                  <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center mb-6 text-emerald-400">
+                    <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3 text-white tracking-tight">2. Compartilhar</h3>
-                  <p className="text-[#9B8FC0] text-sm leading-relaxed">
-                    Copie seu link único (syncou.app/seu-nome) e envie diretamente para seus clientes ou adicione no Instagram.
+                  <h3 className="text-2xl font-semibold mb-3 text-white tracking-tight">Sincronia Total</h3>
+                  <p className="text-[#9B8FC0] leading-relaxed">
+                    Sincronize com o Google Agenda e evite choques de horários automaticamente.
                   </p>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/3 opacity-10">
+                    <CalendarDays className="w-48 h-48" />
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -232,16 +375,70 @@ export function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="md:col-span-5"
             >
-              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm h-full">
-                <CardContent className="pt-8 text-center p-8">
-                  <div className="w-16 h-16 bg-[#1A1333] border border-[#2D214F] rounded-xl flex items-center justify-center mx-auto mb-6 text-violet-400 shadow-sm">
-                    <CalendarDays className="w-7 h-7" strokeWidth={1.5} />
+              <Card className="border border-[#2D214F] bg-gradient-to-tr from-[#130E20] to-[#0A0713] shadow-sm h-full overflow-hidden relative group">
+                <CardContent className="p-8 h-full flex flex-col justify-center">
+                  <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center mb-6 text-amber-400">
+                    <Star className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-medium mb-3 text-white tracking-tight">3. Gerenciar</h3>
-                  <p className="text-[#9B8FC0] text-sm leading-relaxed">
-                    Receba agendamentos no seu dashboard, aprove e gerencie seu negócio em um painel elegante e calmo.
+                  <h3 className="text-2xl font-semibold mb-3 text-white tracking-tight">Menos Faltas</h3>
+                  <p className="text-[#9B8FC0] leading-relaxed relative z-10">
+                    Seus clientes são lembrados do agendamento, diminuindo o número de ausências (no-show) e garantindo seu faturamento.
                   </p>
+                  
+                  {/* Decorative background element */}
+                  <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-amber-500/5 blur-2xl rounded-full group-hover:bg-amber-500/10 transition-colors" />
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="md:col-span-7"
+            >
+              <Card className="border border-[#2D214F] bg-gradient-to-tl from-[#130E20] to-[#0A0713] shadow-sm h-full overflow-hidden relative group">
+                <CardContent className="p-8 h-full flex flex-col justify-center">
+                  <div className="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mb-6 text-blue-400">
+                    <Settings className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-semibold mb-3 text-white tracking-tight">Gestão Inteligente</h3>
+                  <p className="text-[#9B8FC0] leading-relaxed max-w-md relative z-10">
+                    Tenha o controle total do seu negócio. Acompanhe métricas, gerencie seu portfólio de serviços, exporte relatórios (CSV) e gerencie sua disponibilidade em uma interface limpa e intuitiva.
+                  </p>
+                  
+                  <div className="mt-8 flex gap-3 h-12">
+                     <div className="h-full w-32 bg-[#1A1333] border border-[#2D214F] rounded-lg animate-pulse" />
+                     <div className="h-full w-24 bg-[#1A1333] border border-[#2D214F] rounded-lg animate-pulse delay-75" />
+                     <div className="h-full w-20 bg-[#1A1333] border border-[#2D214F] rounded-lg animate-pulse delay-150" />
+                  </div>
+                  
+                  <div className="absolute -top-10 -right-10 w-48 h-48 bg-blue-500/5 blur-3xl rounded-full group-hover:bg-blue-500/10 transition-colors" />
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="md:col-span-12 mt-8"
+            >
+              <Card className="border border-[#2D214F] bg-[#130E20] shadow-sm">
+                <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+                  <div className="max-w-xl">
+                    <h3 className="text-2xl font-semibold mb-3 text-white tracking-tight">Pronto para elevar o nível?</h3>
+                    <p className="text-[#9B8FC0] leading-relaxed">
+                      Junte-se a profissionais parceiros e transforme a maneira como você se conecta com seus clientes. Design brilhante, conversão impecável.
+                    </p>
+                  </div>
+                  <Button size="lg" className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-12 px-8 font-semibold rounded-lg shrink-0" onClick={() => openAuthModal('register')}>
+                    Criar minha conta grátis
+                  </Button>
                 </CardContent>
               </Card>
             </motion.div>
@@ -250,7 +447,10 @@ export function LandingPage() {
       </main>
 
       <footer className="border-t border-[#2D214F] py-12 bg-[#08060F] mt-20">
-        <div className="max-w-7xl mx-auto px-4 text-center text-[#9B8FC0] text-sm">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-4 text-center text-[#9B8FC0] text-sm">
+          <div className="flex gap-4">
+            <Link to="/termos" className="hover:text-white transition-colors">Termos de Serviço e Privacidade</Link>
+          </div>
           <p>&copy; {new Date().getFullYear()} Syncou. Todos os direitos reservados.</p>
         </div>
       </footer>
@@ -382,9 +582,30 @@ export function LandingPage() {
                   </>
                 )}
 
+                {authMode === 'register' && authStep === 'form' && (
+                  <div className="flex items-start space-x-3 pt-2">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      checked={hasAcceptedTerms}
+                      onChange={(e) => setHasAcceptedTerms(e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded border-[#2D214F] bg-[#1A1333] text-[#8B5CF6] focus:ring-[#8B5CF6] focus:ring-offset-[#130E20] focus:ring-offset-2 shrink-0 accent-[#8B5CF6] cursor-pointer"
+                    />
+                    <label
+                      htmlFor="terms"
+                      className="text-xs font-medium leading-relaxed text-[#9B8FC0] cursor-pointer"
+                    >
+                      Eu li e concordo com os{" "}
+                      <Link to="/termos" target="_blank" className="font-semibold text-violet-400 hover:text-white transition-colors">
+                        Termos de Serviço e Política de Privacidade
+                      </Link>.
+                    </label>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
-                  disabled={isSubmitting || (authMode === 'register' && authStep === 'form' && !isValidPassword)}
+                  disabled={isSubmitting || (authMode === 'register' && authStep === 'form' && (!isValidPassword || !hasAcceptedTerms))}
                   className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-medium h-11 rounded-lg shadow-[0_0_20px_rgba(139,92,246,0.25)] transition-all flex items-center justify-center gap-2 mt-4"
                 >
                   {isSubmitting ? (
@@ -416,7 +637,7 @@ export function LandingPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isGoogleSubmitting}
+                    disabled={isGoogleSubmitting || (authMode === 'register' && !hasAcceptedTerms)}
                     onClick={handleGoogleSignIn}
                     className="w-full border-[#2D214F] bg-[#1A1333] hover:bg-[#2D214F] text-[#E2D9F3] font-medium h-11 rounded-lg shadow-sm"
                   >
