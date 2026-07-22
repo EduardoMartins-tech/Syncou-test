@@ -54,7 +54,10 @@ export function DashboardHome() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [currentSlug, setCurrentSlug] = useState<string | null>(null);
 
-  // Status Filter ("Todos", "Pendente", "Confirmado", "Cancelado")
+  // Tabs State
+  const [activeTab, setActiveTab] = useState<'agendamentos' | 'servicos' | 'analytics'>('agendamentos');
+
+  // Status Filter ("Todos", "Pendente", "Confirmado", "Concluído", "Cancelado")
   const [filterStatus, setFilterStatus] = useState<string>('Todos');
   const [filterName, setFilterName] = useState<string>('');
 
@@ -411,6 +414,16 @@ export function DashboardHome() {
     return true;
   }).sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
 
+  const statusCounts = appointments.reduce((acc, apt) => {
+    let s = 'Pendente';
+    if (apt.status === 'confirmed' || apt.status === 'Confirmado') s = 'Confirmado';
+    else if (apt.status === 'completed' || apt.status === 'Concluído') s = 'Concluído';
+    else if (apt.status === 'cancelled' || apt.status === 'Cancelado') s = 'Cancelado';
+    acc[s] = (acc[s] || 0) + 1;
+    acc['Todos'] = (acc['Todos'] || 0) + 1;
+    return acc;
+  }, { 'Todos': 0, 'Pendente': 0, 'Confirmado': 0, 'Concluído': 0, 'Cancelado': 0 } as Record<string, number>);
+
   const now = new Date();
   const currentMonthRevenue = appointments
     .filter(a => {
@@ -519,6 +532,33 @@ export function DashboardHome() {
         </div>
       </motion.div>
 
+      {/* Tabs Switcher */}
+      <div className="flex space-x-2 rounded-xl bg-[#130E20] p-1 border border-[#2D214F] w-full lg:w-fit mb-6 overflow-x-auto hide-scrollbar">
+        <button 
+          onClick={() => setActiveTab('agendamentos')}
+          className={`flex-1 min-w-[140px] rounded-lg py-2.5 text-sm font-medium transition-colors ${activeTab === 'agendamentos' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
+        >
+          <CalendarIcon className="w-4 h-4 inline-block mr-2 mb-0.5" />
+          Agendamentos
+        </button>
+        <button 
+          onClick={() => setActiveTab('servicos')}
+          className={`flex-1 min-w-[140px] rounded-lg py-2.5 text-sm font-medium transition-colors ${activeTab === 'servicos' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
+        >
+          <span className="w-4 h-4 inline-flex items-center justify-center rounded-sm bg-[#8B5CF6]/20 text-violet-400 text-[10px] font-bold mr-2 mb-0.5">S</span>
+          Serviços
+        </button>
+        <button 
+          onClick={() => setActiveTab('analytics')}
+          className={`flex-1 min-w-[140px] rounded-lg py-2.5 text-sm font-medium transition-colors ${activeTab === 'analytics' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
+        >
+          <TrendingUp className="w-4 h-4 inline-block mr-2 mb-0.5" />
+          Analytics
+        </button>
+      </div>
+
+      {activeTab === 'analytics' && (
+        <div className="space-y-8 animate-in fade-in duration-300 slide-in-from-bottom-2">
       {/* Weekly Activity Chart */}
       {!isFetchingAppointments && (
         <motion.div
@@ -655,11 +695,12 @@ export function DashboardHome() {
           </>
         )}
       </div>
+      </div>
+      )}
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        
+      {activeTab === 'agendamentos' && (
+        <div className="space-y-6 animate-in fade-in duration-300 slide-in-from-bottom-2 w-full lg:max-w-4xl">
         {/* Appointments Section */}
-        <div className="space-y-6">
            <div className="flex flex-col gap-4">
              <div className="flex items-center justify-between">
                <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -688,13 +729,20 @@ export function DashboardHome() {
                  <button
                    key={status}
                    onClick={() => setFilterStatus(status)}
-                   className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                   className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
                      filterStatus === status 
                        ? 'bg-violet-600 text-white shadow-sm' 
                        : 'bg-[#130E20] border border-[#2D214F] text-[#9B8FC0] hover:text-white hover:border-[#4B3B7A]'
                    }`}
                  >
                    {status === 'Pendente' ? 'Pendentes' : status === 'Confirmado' ? 'Confirmados' : status === 'Cancelado' ? 'Cancelados' : status === 'Concluído' ? 'Concluídos' : 'Todos'}
+                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                     filterStatus === status
+                       ? 'bg-white/20 text-white'
+                       : 'bg-[#2D214F] text-[#E2D9F3]'
+                   }`}>
+                     {statusCounts[status] || 0}
+                   </span>
                  </button>
                ))}
              </div>
@@ -895,9 +943,11 @@ export function DashboardHome() {
               )}
            </div>
         </div>
+      )}
 
+      {activeTab === 'servicos' && (
+        <div className="space-y-6 animate-in fade-in duration-300 slide-in-from-bottom-2 w-full lg:max-w-4xl">
         {/* Services Section */}
-        <div className="space-y-6">
            <div className="flex items-center justify-between">
              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                <span className="w-6 h-6 rounded-md bg-[#8B5CF6]/20 text-violet-400 flex items-center justify-center text-xs font-semibold ring-1 ring-violet-500/30">S</span>
@@ -978,8 +1028,7 @@ export function DashboardHome() {
              )}
            </div>
         </div>
-
-      </div>
+      )}
 
       {/* Cancellation Reason Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>

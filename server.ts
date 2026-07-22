@@ -141,7 +141,6 @@ app.use(globalLimiter.middleware());
 // Initialize PostgreSQL
 const isDev = process.env.NODE_ENV !== 'production';
 
-import { Pool } from 'pg';
 
 // Safely configure pg pool
 const dbUrl = process.env.DATABASE_URL || '';
