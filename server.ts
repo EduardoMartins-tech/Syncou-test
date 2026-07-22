@@ -138,48 +138,42 @@ const bookingLimiter = new RateLimiter({
 // Apply global rate limiting to all requests
 app.use(globalLimiter.middleware());
 
-// Initialize SQLite instead of PostgreSQL
+// Initialize PostgreSQL
 const isDev = process.env.NODE_ENV !== 'production';
 
-import Database from 'better-sqlite3';
-const db = new Database('database.sqlite');
-db.pragma('journal_mode = WAL');
+import { Pool } from 'pg';
 
-const pool = {
-  connect: async () => ({
-    release: () => {},
-    query: async (text: string, params: any[] = []) => pool.query(text, params)
-  }),
-  query: async (text: string, params: any[] = []) => {
-    // If no params and contains multiple statements (or is just a generic query),
-    // we can try exec for things like migrations.
-    // We'll use exec if it's explicitly a CREATE/ALTER or if it has multiple statements.
-    if (params.length === 0 && (text.includes(';') || text.trim().toUpperCase().startsWith('CREATE'))) {
-      try {
-        db.exec(text);
-        return { rows: [], rowCount: 0 };
-      } catch (e) {
-        console.error('Error executing multi-statement:', text);
-        throw e;
-      }
-    }
+// Safely configure pg pool
+const dbUrl = process.env.DATABASE_URL || '';
+const poolConfig: any = {};
 
-    // Convert Postgres $1, $2 to SQLite ?
-    const sqliteText = text.replace(/\$\d+/g, '?');
-    try {
-      if (sqliteText.trim().toUpperCase().startsWith('SELECT') || sqliteText.trim().toUpperCase().includes('RETURNING')) {
-        const rows = db.prepare(sqliteText).all(...params);
-        return { rows, rowCount: rows.length };
-      } else {
-        const result = db.prepare(sqliteText).run(...params);
-        return { rows: [], rowCount: result.changes };
-      }
-    } catch (e) {
-      console.error('Error executing query:', sqliteText, params);
-      throw e;
-    }
+if (process.env.PGHOST && process.env.PGPASSWORD) {
+  console.log("Usando variáveis separadas PGHOST, PGUSER, etc.");
+  poolConfig.host = process.env.PGHOST;
+  poolConfig.port = process.env.PGPORT ? parseInt(process.env.PGPORT) : 5432;
+  poolConfig.user = process.env.PGUSER;
+  poolConfig.password = process.env.PGPASSWORD;
+  poolConfig.database = process.env.PGDATABASE;
+  
+  if (!process.env.PGHOST.includes('railway.internal') && !process.env.PGHOST.includes('localhost') && !process.env.PGHOST.includes('127.0.0.1')) {
+    poolConfig.ssl = { rejectUnauthorized: false };
   }
-};
+} else if (dbUrl) {
+  poolConfig.connectionString = dbUrl;
+  if (!dbUrl.includes('localhost') && !dbUrl.includes('railway.internal')) {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  }
+}
+
+const pool = new Pool(poolConfig);
+
+// Basic sanity check
+if (!dbUrl && !process.env.PGHOST) {
+  console.warn("⚠️ AVISO CRÍTICO: Nenhuma variável de banco de dados configurada!");
+} else if (dbUrl) {
+  const maskedUrl = dbUrl.replace(/:([^:@]+)@/, ':***@');
+  console.log(`Configuração detectada. Tentando conectar... ${maskedUrl.includes('railway') ? '(Rede do Railway)' : ''}`);
+}
 
 async function runMigrations() {
   let client;
@@ -209,7 +203,10 @@ async function runMigrations() {
       );
       
       -- Alter table explicitly in case it already exists but without the new column
-      -- (Moved to individual statements below)
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_message_template TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS work_on_holidays BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(50) DEFAULT 'free';
 
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
@@ -254,19 +251,8 @@ async function runMigrations() {
         expires_at TIMESTAMP NOT NULL
       );
     `);
-    
-    // SQLite doesn't support ADD COLUMN IF NOT EXISTS, so try each individually
-    const alterTables = [
-      'ALTER TABLE users ADD COLUMN google_access_token TEXT',
-      'ALTER TABLE users ADD COLUMN whatsapp_message_template TEXT',
-      'ALTER TABLE users ADD COLUMN work_on_holidays BOOLEAN DEFAULT false',
-      'ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT "free"'
-    ];
-    for (const sql of alterTables) {
-      try { await client.query(sql); } catch(e) {}
-    }
 
-    console.log("Banco de dados sincronizado e tabelas verificadas com sucesso! (SQLite)");
+    console.log("Banco de dados sincronizado e tabelas verificadas com sucesso! (PostgreSQL)");
   } catch (err: any) {
     console.error("================ ERRO CRÍTICO NO BANCO DE DADOS ================");
     console.error("Falha ao rodar migrations. Isso geralmente significa que a DATABASE_URL");
