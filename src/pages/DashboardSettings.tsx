@@ -16,7 +16,6 @@ import { googleSignInForCalendar } from '../lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PricingModal } from '../components/PricingModal';
 
 const slugSchema = z.object({
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens").max(60),
@@ -58,7 +57,6 @@ export function DashboardSettings() {
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
   const [multipleClosedDates, setMultipleClosedDates] = useState<Date[] | undefined>([]);
   const [savingMultiple, setSavingMultiple] = useState(false);
-  const [showPricingModal, setShowPricingModal] = useState(false);
 
   const handleMarkMultipleAsClosed = async () => {
     if (!currentUser || !multipleClosedDates || multipleClosedDates.length === 0) return;
@@ -88,11 +86,6 @@ export function DashboardSettings() {
   };
 
   const handleConnectGoogleCalendar = async () => {
-    if (currentUser?.plan !== 'gold') {
-      toast.error('A sincronização do Google Calendar é um recurso exclusivo do Plano Ouro.');
-      setShowPricingModal(true);
-      return;
-    }
     try {
       const result = await googleSignInForCalendar();
       if (result?.accessToken) {
@@ -474,26 +467,14 @@ export function DashboardSettings() {
                 
                 <div className="flex items-center justify-between mt-4 mb-1">
                   <Label htmlFor="whatsappMessageTemplate" className="text-[#E2D9F3] block">Mensagem de Confirmação (WhatsApp)</Label>
-                  {currentUser?.plan !== 'gold' && (
-                    <span className="text-[10px] bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full font-medium">Requer Plano Ouro 👑</span>
-                  )}
                 </div>
                 <Textarea
                   id="whatsappMessageTemplate"
                   {...register('whatsappMessageTemplate')}
-                  disabled={currentUser?.plan !== 'gold'}
-                  className={`bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-[#8B5CF6] min-h-[100px] placeholder:text-[#5B4F81] ${
-                    currentUser?.plan !== 'gold' ? 'opacity-55 cursor-not-allowed bg-[#0B0914]/50' : ''
-                  }`}
+                  className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-[#8B5CF6] min-h-[100px] placeholder:text-[#5B4F81]"
                   placeholder="Ex: Olá {NOME}, passando para confirmar seu agendamento de {SERVICOS} no dia {DATA} às {HORA}. Te aguardo!"
                 />
-                {currentUser?.plan !== 'gold' ? (
-                  <p className="text-xs text-amber-300/80 mt-1">
-                    ⚠️ A personalização do modelo de mensagens do WhatsApp está disponível apenas no Plano Ouro. O sistema enviará o modelo padrão. <button type="button" onClick={() => setShowPricingModal(true)} className="text-amber-400 underline hover:text-amber-300 font-medium">Fazer Upgrade</button>
-                  </p>
-                ) : (
-                  <p className="text-xs text-[#5B4F81]">Você pode usar as aspas dinâmicas: {"{NOME}"}, {"{SERVICOS}"}, {"{DATA}"} e {"{HORA}"}.</p>
-                )}
+                <p className="text-xs text-[#5B4F81]">Você pode usar as aspas dinâmicas: {"{NOME}"}, {"{SERVICOS}"}, {"{DATA}"} e {"{HORA}"}.</p>
               </div>
             </CardContent>
           </Card>
@@ -842,7 +823,6 @@ export function DashboardSettings() {
           </Card>
         </div>
       </motion.div>
-      <PricingModal isOpen={showPricingModal} onClose={() => setShowPricingModal(false)} />
     </div>
   );
 }

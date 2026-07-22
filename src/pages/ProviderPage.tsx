@@ -11,6 +11,7 @@ import { Clock, Plus, Check, ChevronLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, isSameDay, addMinutes, isAfter, startOfDay, addDays, getHours, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface Provider {
   id: string;
@@ -237,14 +238,22 @@ export function ProviderPage() {
       });
       
       if(!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Falha no agendamento');
+        let errorMsg = 'Falha no agendamento';
+        try {
+          const errorData = await res.json();
+          if (errorData.error) errorMsg = errorData.error;
+        } catch(e) {
+          // If not json, try text
+          const text = await res.text().catch(() => '');
+          if (text) errorMsg = text;
+        }
+        throw new Error(errorMsg);
       }
 
       setStep(4);
     } catch(err: any) {
       console.error(err);
-      alert(err.message || 'Erro ao agendar. Tente novamente.');
+      toast.error(err.message || 'Erro ao agendar. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
