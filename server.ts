@@ -461,11 +461,14 @@ app.post('/api/subscription/downgrade', authenticateToken, async (req: any, res:
 
 app.post('/api/users/google-token', authenticateToken, async (req: any, res: any) => {
   try {
+    // Disable plan checks for now
+    /*
     const userPlanRes = await pool.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
     const plan = userPlanRes.rows[0]?.plan || 'free';
     if (plan !== 'gold') {
       return res.status(403).json({ error: 'A sincronização com o Google Calendar é um recurso exclusivo do Plano Ouro.' });
     }
+    */
     const { token } = req.body;
     await pool.query(
       'UPDATE users SET google_access_token = $1 WHERE id = $2',
@@ -479,11 +482,16 @@ app.post('/api/users/google-token', authenticateToken, async (req: any, res: any
 
 app.post('/api/users/test-calendar', authenticateToken, async (req: any, res: any) => {
   try {
+    // Disable plan checks for now
+    /*
     const providerRes = await pool.query('SELECT google_access_token, plan FROM users WHERE id = $1', [req.user.id]);
     const plan = providerRes.rows[0]?.plan || 'free';
     if (plan !== 'gold') {
       return res.status(403).json({ error: 'A sincronização com o Google Calendar é um recurso exclusivo do Plano Ouro.' });
     }
+    const googleAccessToken = providerRes.rows[0]?.google_access_token;
+    */
+    const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
     const googleAccessToken = providerRes.rows[0]?.google_access_token;
     
     if (!googleAccessToken) {
@@ -653,6 +661,8 @@ app.get('/api/services', authenticateToken, async (req: any, res) => {
 
 app.post('/api/services', authenticateToken, async (req: any, res: any) => {
   try {
+    // Disable plan checks for now
+    /*
     const userPlanRes = await pool.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
     const plan = userPlanRes.rows[0]?.plan || 'free';
     if (plan !== 'gold') {
@@ -662,6 +672,7 @@ app.post('/api/services', authenticateToken, async (req: any, res: any) => {
         return res.status(403).json({ error: 'Limite do plano gratuito atingido. O Plano Bronze (Gratuito) permite o cadastro de apenas 1 serviço ativo. Faça o upgrade para o Plano Ouro para ter serviços ilimitados!' });
       }
     }
+    */
     const { title, description, duration, bufferTime, price, active } = req.body;
     const id = generateId();
     await pool.query(
@@ -918,6 +929,8 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
     }
     const providerRow = providerUser.rows[0];
 
+    // Disable plan checks for now
+    /*
     const plan = providerRow.plan || 'free';
     if (plan !== 'gold') {
       const now = new Date();
@@ -932,6 +945,7 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
         return res.status(403).json({ error: 'O limite mensal de agendamentos deste profissional foi atingido (limite de 15 agendamentos no Plano Gratuito). Se você é o profissional, faça o upgrade para o Plano Ouro para liberar agendamentos ilimitados!' });
       }
     }
+    */
 
     try {
       if (providerRow.scheduleOverrides) {
