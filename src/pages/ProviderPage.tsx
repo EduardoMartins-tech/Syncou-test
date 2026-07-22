@@ -236,12 +236,15 @@ export function ProviderPage() {
          body: JSON.stringify(bookingPayload)
       });
       
-      if(!res.ok) throw new Error('Falha no agendamento');
+      if(!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Falha no agendamento');
+      }
 
       setStep(4);
-    } catch(err) {
+    } catch(err: any) {
       console.error(err);
-      alert('Erro ao agendar. Tente novamente.');
+      alert(err.message || 'Erro ao agendar. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
