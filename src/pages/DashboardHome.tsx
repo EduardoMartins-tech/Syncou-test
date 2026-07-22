@@ -399,6 +399,7 @@ export function DashboardHome() {
     // Determine standard status string
     let aptStatus = 'Pendente';
     if (apt.status === 'confirmed' || apt.status === 'Confirmado') aptStatus = 'Confirmado';
+    else if (apt.status === 'completed' || apt.status === 'Concluído') aptStatus = 'Concluído';
     else if (apt.status === 'cancelled' || apt.status === 'Cancelado') aptStatus = 'Cancelado';
 
     // Status filter
@@ -408,7 +409,7 @@ export function DashboardHome() {
     if (filterName && !apt.clientName.toLowerCase().includes(filterName.toLowerCase())) return false;
 
     return true;
-  });
+  }).sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
 
   const now = new Date();
   const currentMonthRevenue = appointments
@@ -630,10 +631,25 @@ export function DashboardHome() {
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-[#9B8FC0]">Confirmados</h3>
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <CheckCircle2 className="w-5 h-5 text-blue-400" />
               </div>
               <div className="text-4xl font-bold text-white">
                 {appointments.filter(a => a.status === 'confirmed' || a.status === 'Confirmado').length}
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[#130E20] p-6 rounded-2xl border border-[#2D214F] hover:border-[#4B3B7A] transition-colors shadow-sm"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium text-[#9B8FC0]">Concluídos</h3>
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="text-4xl font-bold text-white">
+                {appointments.filter(a => a.status === 'completed' || a.status === 'Concluído').length}
               </div>
             </motion.div>
           </>
@@ -644,34 +660,43 @@ export function DashboardHome() {
         
         {/* Appointments Section */}
         <div className="space-y-6">
-           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-             <h2 className="text-xl font-bold text-white flex items-center gap-2">
-               <CalendarIcon className="w-5 h-5 text-violet-400" />
-               Agendamentos
-               <span className="bg-[#1A1333] text-[#E2D9F3] text-xs px-2 py-1 rounded-full">{filteredAppointments.length}</span>
-             </h2>
-
-             <div className="flex gap-2 w-full sm:w-auto">
-               <Input 
-                 placeholder="Filtrar por nome..." 
-                 value={filterName}
-                 onChange={e => setFilterName(e.target.value)}
-                 className="bg-[#130E20] border-[#2D214F] text-white h-9 placeholder:text-[#5B4F81] focus-visible:ring-violet-500"
-               />
-               <select 
-                 value={filterStatus}
-                 onChange={e => setFilterStatus(e.target.value)}
-                 className="bg-[#130E20] border border-[#2D214F] text-white rounded-md px-3 h-9 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-               >
-                 <option value="Todos">Todos</option>
-                 <option value="Pendente">Pendentes</option>
-                 <option value="Confirmado">Confirmados</option>
-                 <option value="Cancelado">Cancelados</option>
-               </select>
-               <Button onClick={exportToCSV} variant="outline" className="border-[#2D214F] text-[#E2D9F3] hover:text-white hover:bg-[#2D214F]/50 h-9 px-3 shrink-0">
-                 <Download className="w-4 h-4 mr-2" />
-                 Exportar CSV
-               </Button>
+           <div className="flex flex-col gap-4">
+             <div className="flex items-center justify-between">
+               <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                 <CalendarIcon className="w-5 h-5 text-violet-400" />
+                 Agendamentos
+                 <span className="bg-[#1A1333] text-[#E2D9F3] text-xs px-2 py-1 rounded-full">{filteredAppointments.length}</span>
+               </h2>
+               
+               <div className="flex gap-2">
+                 <Input 
+                   placeholder="Filtrar por nome..." 
+                   value={filterName}
+                   onChange={e => setFilterName(e.target.value)}
+                   className="bg-[#130E20] border-[#2D214F] text-white h-9 placeholder:text-[#5B4F81] focus-visible:ring-violet-500 w-[150px] sm:w-[200px]"
+                 />
+                 <Button onClick={exportToCSV} variant="outline" className="border-[#2D214F] text-[#E2D9F3] hover:text-white hover:bg-[#2D214F]/50 h-9 px-3 shrink-0">
+                   <Download className="w-4 h-4 sm:mr-2" />
+                   <span className="hidden sm:inline">Exportar CSV</span>
+                 </Button>
+               </div>
+             </div>
+             
+             {/* Tabs para Filtro */}
+             <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 md:mx-0 md:px-0 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+               {['Todos', 'Pendente', 'Confirmado', 'Concluído', 'Cancelado'].map(status => (
+                 <button
+                   key={status}
+                   onClick={() => setFilterStatus(status)}
+                   className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                     filterStatus === status 
+                       ? 'bg-violet-600 text-white shadow-sm' 
+                       : 'bg-[#130E20] border border-[#2D214F] text-[#9B8FC0] hover:text-white hover:border-[#4B3B7A]'
+                   }`}
+                 >
+                   {status === 'Pendente' ? 'Pendentes' : status === 'Confirmado' ? 'Confirmados' : status === 'Cancelado' ? 'Cancelados' : status === 'Concluído' ? 'Concluídos' : 'Todos'}
+                 </button>
+               ))}
              </div>
            </div>
 
@@ -740,11 +765,13 @@ export function DashboardHome() {
                         <div className="text-right">
                           <div className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1.5
                             ${(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 
-                              (apt.status === 'confirmed' || apt.status === 'Confirmado') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 
+                              (apt.status === 'confirmed' || apt.status === 'Confirmado') ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30' : 
+                              (apt.status === 'completed' || apt.status === 'Concluído') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 
                               'bg-red-500/15 text-red-400 border border-red-500/30'}
                           `}>
                             {(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) && <><Clock className="w-3.5 h-3.5" /> Pendente</>}
                             {(apt.status === 'confirmed' || apt.status === 'Confirmado') && <><CheckCircle2 className="w-3.5 h-3.5" /> Confirmado</>}
+                            {(apt.status === 'completed' || apt.status === 'Concluído') && <><CheckCircle2 className="w-3.5 h-3.5" /> Concluído</>}
                             {(apt.status === 'cancelled' || apt.status === 'Cancelado') && <><XCircle className="w-3.5 h-3.5" /> Cancelado</>}
                           </div>
                           {apt.bookingSource === 'public_link' && (
@@ -768,17 +795,17 @@ export function DashboardHome() {
                       </div>
 
                       <div className="flex flex-col gap-2 mt-4">
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                           <Button 
                             size="sm" 
                             variant="outline"
                             onClick={() => openWhatsApp(apt)} 
-                            className="flex-1 bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:text-white hover:border-[#4B3B7A] hover:bg-[#2D214F]"
+                            className="bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:text-white hover:border-[#4B3B7A] hover:bg-[#2D214F]"
                           >
                             <MessageSquare className="w-4 h-4 mr-2 text-[#9B8FC0] group-hover:text-white" /> WhatsApp
                           </Button>
                           
-                          {(apt.status !== 'cancelled' && apt.status !== 'Cancelado') && (
+                          {(apt.status !== 'cancelled' && apt.status !== 'Cancelado' && apt.status !== 'completed' && apt.status !== 'Concluído') && (
                             <Button 
                               size="sm" 
                               variant="outline"
@@ -789,7 +816,7 @@ export function DashboardHome() {
                                 setRescheduleTime(currentStart.toTimeString().slice(0, 5));
                                 setIsRescheduleModalOpen(true);
                               }} 
-                              className="flex-1 bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:text-white hover:border-[#4B3B7A] hover:bg-[#2D214F]"
+                              className="bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:text-white hover:border-[#4B3B7A] hover:bg-[#2D214F]"
                             >
                               <RefreshCcw className="w-4 h-4 mr-2" /> Remarcar
                             </Button>
@@ -797,8 +824,8 @@ export function DashboardHome() {
                         </div>
                         
                         {(apt.status === 'scheduled' || apt.status === 'Pendente' || !apt.status) && (
-                          <div className="flex gap-2 mt-2">
-                            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(apt.id, 'Confirmado')} className="flex-1 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white">
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <Button size="sm" onClick={() => handleUpdateAppointmentStatus(apt.id, 'Confirmado')} className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white">
                               Confirmar
                             </Button>
                             <Button 
@@ -809,33 +836,46 @@ export function DashboardHome() {
                                 setIsCancelModalOpen(true);
                               }} 
                               variant="destructive" 
-                              className="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none"
+                              className="bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none"
                             >
                               Cancelar
                             </Button>
                           </div>
                         )}
                         {(apt.status === 'confirmed' || apt.status === 'Confirmado') && (
-                          <div className="flex gap-2 mt-2">
-                            <Button size="sm" disabled className="flex-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                              Confirmado
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleUpdateAppointmentStatus(apt.id, 'Concluído')} 
+                              className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 hover:text-emerald-300 border-none"
+                            >
+                              <CheckCircle2 className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Concluir</span> Serviço
                             </Button>
                             <Button 
                               size="sm" 
                               onClick={() => {
-                                setCancelingApt(apt);
-                                setCancelReason('');
-                                setIsCancelModalOpen(true);
-                              }} 
-                              variant="destructive" 
-                              className="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none"
+                                if (window.confirm("Desfazer confirmação e voltar para Pendente?")) {
+                                  handleUpdateAppointmentStatus(apt.id, 'Pendente');
+                                }
+                              }}
+                              variant="outline" 
+                              className="bg-[#1A1333] border-[#2D214F] text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]"
                             >
-                              Cancelar
+                              <RefreshCcw className="w-4 h-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Desfazer</span>
+                            </Button>
+                          </div>
+                        )}
+                        {(apt.status === 'completed' || apt.status === 'Concluído') && (
+                          <div className="space-y-1 mt-2">
+                            <Button size="sm" disabled className="w-full bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                              Serviço Concluído
                             </Button>
                           </div>
                         )}
                         {(apt.status === 'cancelled' || apt.status === 'Cancelado') && (
-                          <div className="space-y-1">
+                          <div className="space-y-1 mt-2">
                             <Button size="sm" disabled className="w-full bg-red-500/10 text-red-400 border-red-500/20">
                               Cancelado
                             </Button>
