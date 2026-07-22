@@ -2,15 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Calendar as CalendarIcon, Clock, MapPin, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Calendar, dateFnsLocalizer, Views, View } from 'react-big-calendar';
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
-import startOfWeek from 'date-fns/startOfWeek';
-import getDay from 'date-fns/getDay';
-import ptBR from 'date-fns/locale/pt-BR';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { format as formatTZ, toZonedTime } from 'date-fns-tz';
 
 const locales = {
   'pt-BR': ptBR,
@@ -96,7 +92,7 @@ const CustomToolbar = (toolbar: any) => {
                 : 'text-[#9B8FC0] hover:text-[#E2D9F3] hover:bg-[#2D214F]'
             }`}
           >
-            {messagesConfig[viewName as keyof typeof messagesConfig]}
+            {messagesConfig[viewName as keyof typeof messagesConfig] as string}
           </button>
         ))}
       </div>

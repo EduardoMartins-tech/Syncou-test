@@ -22,6 +22,7 @@ interface Provider {
   workingHoursEnd?: string;
   workingDays?: number[];
   whatsapp?: string;
+  workOnHolidays?: boolean;
   scheduleOverrides?: Record<string, { start: string; end: string; isClosed: boolean }>;
 }
 

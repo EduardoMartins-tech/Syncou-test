@@ -10,6 +10,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (data: any) => Promise<boolean>;
   getAuthHeaders: () => { Authorization: string };
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   updateUser: async () => false,
   getAuthHeaders: () => ({ Authorization: '' }),
+  refreshUser: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -186,8 +188,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = async () => {
+    const token = localStorage.getItem('syncou_token');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setCurrentUser(user);
+      }
+    } catch (err) {
+      console.error('Failed to refresh user', err);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, loading, login, loginWithGoogle, register, logout, updateUser, getAuthHeaders }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, loginWithGoogle, register, logout, updateUser, getAuthHeaders, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

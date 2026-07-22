@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from '../contexts/AuthContext';
 import { syncWithGoogleCalendar } from '../lib/calendar';
 import { googleSignInForCalendar } from '../lib/firebase';
+import { PricingModal } from '../components/PricingModal';
 
 interface Service {
   id: string;
@@ -48,6 +49,7 @@ export function DashboardHome() {
   const signInWithGoogle = () => {};
 
   const [services, setServices] = useState<Service[]>([]);
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isFetchingAppointments, setIsFetchingAppointments] = useState(true);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -154,6 +156,11 @@ export function DashboardHome() {
       if (editingService) {
         toast.error('Edição de serviço atual não suportada direto na api demo.');
       } else {
+        if (currentUser?.plan !== 'gold' && services.length >= 1) {
+          toast.error('Limite do plano gratuito atingido. O Plano Bronze permite cadastrar apenas 1 serviço ativo. Faça o upgrade para o Plano Ouro para liberar serviços ilimitados!');
+          setIsPricingModalOpen(true);
+          return;
+        }
         const res = await fetch('/api/services', {
           method: 'POST',
           headers: {
@@ -163,10 +170,11 @@ export function DashboardHome() {
           body: JSON.stringify({ title, description, duration, bufferTime, price, active })
         });
         if (res.ok) {
-          toast.success('Serviço criado!');
+          toast.success('Serviço criado com sucesso!');
           fetchServices();
         } else {
-          toast.error('Erro ao salvar serviço');
+          const resData = await res.json().catch(() => ({}));
+          toast.error(resData.error || 'Erro ao salvar serviço');
         }
       }
       setIsServiceModalOpen(false);
@@ -342,6 +350,11 @@ export function DashboardHome() {
   };
 
   const handleSyncCalendar = async (isRetry = false) => {
+    if (currentUser?.plan !== 'gold') {
+      toast.error('A sincronização de calendários do Google é um recurso exclusivo do Plano Ouro.');
+      setIsPricingModalOpen(true);
+      return;
+    }
     try {
       const loadingToast = toast.loading(isRetry ? 'Re-sincronizando...' : 'Sincronizando com o Google Calendar...');
       const res = await fetch('/api/appointments/sync-all', {
@@ -458,7 +471,7 @@ export function DashboardHome() {
         time = apt.time;
       }
       
-      const service = apt.serviceName || 'N/A';
+      const service = (apt.services && apt.services.length > 0) ? apt.services.join('; ') : 'N/A';
       const price = (Number(apt.totalPrice) || 0).toFixed(2);
       
       // Escape commas by quoting
@@ -514,6 +527,81 @@ export function DashboardHome() {
                Copiar
              </Button>
           )}
+        </div>
+      </motion.div>
+
+      {/* Indicador de Plano e Limites do Sistema */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-[#1F1733]/70 border border-[#2D214F] p-4 sm:p-5 rounded-2xl"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-violet-600/20 text-violet-400 border border-violet-500/20 rounded-xl">
+            <TrendingUp className="w-5 h-5 text-violet-400" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+              Assinatura: {currentUser?.plan === 'gold' ? 'Plano Ouro 👑' : 'Plano Bronze 🥉 (Gratuito)'}
+            </h4>
+            <p className="text-xs text-[#9B8FC0] mt-0.5">
+              {currentUser?.plan === 'gold' 
+                ? 'Todos os recursos e limites liberados!' 
+                : 'Recursos essenciais de agendamento ativos.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 md:border-l md:border-r border-[#2D214F] md:px-5">
+          <div className="flex justify-between text-xs">
+            <span className="text-[#9B8FC0]">Serviços Ativos:</span>
+            <span className="font-semibold text-white">
+              {services.length} {currentUser?.plan === 'gold' ? '/ Sem limites' : '/ 1 máximo'}
+            </span>
+          </div>
+          <div className="w-full bg-[#0B0914] h-1.5 rounded-full overflow-hidden">
+            <div 
+              className="bg-violet-500 h-1 rounded-full transition-all duration-300" 
+              style={{ width: currentUser?.plan === 'gold' ? '100%' : `${Math.min(100, (services.length / 1) * 100)}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between md:pl-5 gap-3">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-[#9B8FC0]">Agendamentos (Mês):</span>
+              <span className="font-semibold text-white">
+                {appointments.filter(a => {
+                  const d = new Date(a.startAt || a.date || '');
+                  const now = new Date();
+                  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && a.status !== 'cancelled' && a.status !== 'Cancelado';
+                }).length} {currentUser?.plan === 'gold' ? '/ Sem limite' : '/ 15 máximo'}
+              </span>
+            </div>
+            <div className="w-full bg-[#0B0914] h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="bg-amber-400 h-1 rounded-full transition-all duration-300" 
+                style={{ 
+                  width: currentUser?.plan === 'gold' ? '100%' : `${Math.min(100, (appointments.filter(a => {
+                    const d = new Date(a.startAt || a.date || '');
+                    const now = new Date();
+                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && a.status !== 'cancelled' && a.status !== 'Cancelado';
+                  }).length / 15) * 100)}%` 
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <Button 
+              type="button" 
+              onClick={() => setIsPricingModalOpen(true)}
+              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 h-9 rounded-lg shadow-md transition-all flex items-center justify-center gap-1 shrink-0 border-none"
+            >
+              👑 {currentUser?.plan === 'gold' ? 'Planos' : 'Upgrade Ouro'}
+            </Button>
+          </div>
         </div>
       </motion.div>
 
@@ -1025,6 +1113,7 @@ export function DashboardHome() {
           </form>
         </DialogContent>
       </Dialog>
+      <PricingModal isOpen={isPricingModalOpen} onClose={() => setIsPricingModalOpen(false)} />
     </div>
   );
 }

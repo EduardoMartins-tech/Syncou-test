@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import cron from 'node-cron';
+import { RateLimiter } from './server/rateLimiter';
 
 let transporter: nodemailer.Transporter | null = null;
 async function setupEmail() {
@@ -103,6 +104,38 @@ const JWT_SECRET = process.env.JWT_SECRET || 'syncou-super-secret-key-has-to-be-
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
+// Initialize Rate Limiters (Slide-window on active memory)
+// 1. Global / General Rate Limiter (Protects the general site architecture and routes from flood)
+const globalLimiter = new RateLimiter({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 180, // max 180 requests per minute
+  message: 'Muitas requisições vindas deste IP. Por favor, tente novamente em 1 minuto.'
+});
+
+// 2. Strict Auth / Account rate limiting (Protects Login, Register and Google Auth paths)
+const authLimiter = new RateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 10, // max 10 attempts
+  message: 'Muitas tentativas de login ou cadastro. Por segurança, tente novamente em 5 minutos.'
+});
+
+// 3. Strict One-Time Password spam protection (Protects send-otp from abuse)
+const otpLimiter = new RateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // max 5 OTP requests per 5 minutes
+  message: 'Limite de envio de código de segurança excedido. Tente novamente em 5 minutos.'
+});
+
+// 4. Booking spam protection (Protects public-facing schedule booking endpoint)
+const bookingLimiter = new RateLimiter({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 8, // max 8 bookings per 10 minutes from same IP to block spammers filling out vendor agendas
+  message: 'Você atingiu o limite máximo de agendamentos temporários deste IP. Tente novamente mais tarde.'
+});
+
+// Apply global rate limiting to all requests
+app.use(globalLimiter.middleware());
+
 // Initialize PostgreSQL
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -161,6 +194,7 @@ async function runMigrations() {
         google_access_token TEXT,
         whatsapp_message_template TEXT,
         role VARCHAR(50) DEFAULT 'provider',
+        plan VARCHAR(50) DEFAULT 'free',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       
@@ -168,6 +202,7 @@ async function runMigrations() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_message_template TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS work_on_holidays BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan VARCHAR(50) DEFAULT 'free';
 
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY,
@@ -201,6 +236,9 @@ async function runMigrations() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE CASCADE
       );
+
+      CREATE INDEX IF NOT EXISTS idx_services_provider ON services (provider_id);
+      CREATE INDEX IF NOT EXISTS idx_appointments_provider_dates ON appointments (provider_id, start_at, end_at);
     `);
     await client.query(`
       CREATE TABLE IF NOT EXISTS otp_codes (
@@ -243,7 +281,7 @@ function generateId() {
 
 // ====== API ROUTES ====== //
 
-app.post('/api/auth/send-otp', async (req, res) => {
+app.post('/api/auth/send-otp', otpLimiter.middleware(), async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'E-mail obrigatório.' });
@@ -287,7 +325,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
   }
 });
 
-app.post('/api/auth/google', async (req, res) => {
+app.post('/api/auth/google', authLimiter.middleware(), async (req, res) => {
   try {
     const { email, displayName } = req.body;
     if (!email) return res.status(400).json({ error: 'Email não encontrado' });
@@ -317,7 +355,7 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter.middleware(), async (req, res) => {
   try {
     const { email, password, code } = req.body;
     if (!email || !password || !code) return res.status(400).json({ error: 'Dados incompletos. Informe email, código e senha.' });
@@ -358,7 +396,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter.middleware(), async (req, res) => {
   try {
     const { email, password } = req.body;
     const result = await pool.query('SELECT id, email, password_hash FROM users WHERE email = $1', [email]);
@@ -379,7 +417,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/users/me', authenticateToken, async (req: any, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role FROM users WHERE id = $1',
+      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role, plan FROM users WHERE id = $1',
       [req.user.id]
     );
     const user = result.rows[0];
@@ -397,8 +435,35 @@ app.get('/api/users/me', authenticateToken, async (req: any, res) => {
   }
 });
 
+app.post('/api/subscription/upgrade', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { plan } = req.body;
+    if (plan !== 'gold') {
+      return res.status(400).json({ error: 'Plano inválido.' });
+    }
+    await pool.query('UPDATE users SET plan = $1 WHERE id = $2', [plan, req.user.id]);
+    res.json({ success: true, plan });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/subscription/downgrade', authenticateToken, async (req: any, res: any) => {
+  try {
+    await pool.query("UPDATE users SET plan = 'free' WHERE id = $1", [req.user.id]);
+    res.json({ success: true, plan: 'free' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/users/google-token', authenticateToken, async (req: any, res: any) => {
   try {
+    const userPlanRes = await pool.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
+    const plan = userPlanRes.rows[0]?.plan || 'free';
+    if (plan !== 'gold') {
+      return res.status(403).json({ error: 'A sincronização com o Google Calendar é um recurso exclusivo do Plano Ouro.' });
+    }
     const { token } = req.body;
     await pool.query(
       'UPDATE users SET google_access_token = $1 WHERE id = $2',
@@ -412,7 +477,11 @@ app.post('/api/users/google-token', authenticateToken, async (req: any, res: any
 
 app.post('/api/users/test-calendar', authenticateToken, async (req: any, res: any) => {
   try {
-    const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
+    const providerRes = await pool.query('SELECT google_access_token, plan FROM users WHERE id = $1', [req.user.id]);
+    const plan = providerRes.rows[0]?.plan || 'free';
+    if (plan !== 'gold') {
+      return res.status(403).json({ error: 'A sincronização com o Google Calendar é um recurso exclusivo do Plano Ouro.' });
+    }
     const googleAccessToken = providerRes.rows[0]?.google_access_token;
     
     if (!googleAccessToken) {
@@ -580,8 +649,17 @@ app.get('/api/services', authenticateToken, async (req: any, res) => {
   }
 });
 
-app.post('/api/services', authenticateToken, async (req: any, res) => {
+app.post('/api/services', authenticateToken, async (req: any, res: any) => {
   try {
+    const userPlanRes = await pool.query('SELECT plan FROM users WHERE id = $1', [req.user.id]);
+    const plan = userPlanRes.rows[0]?.plan || 'free';
+    if (plan !== 'gold') {
+      const servicesRes = await pool.query('SELECT count(*) FROM services WHERE provider_id = $1', [req.user.id]);
+      const servicesCount = parseInt(servicesRes.rows[0].count, 10);
+      if (servicesCount >= 1) {
+        return res.status(403).json({ error: 'Limite do plano gratuito atingido. O Plano Bronze (Gratuito) permite o cadastro de apenas 1 serviço ativo. Faça o upgrade para o Plano Ouro para ter serviços ilimitados!' });
+      }
+    }
     const { title, description, duration, bufferTime, price, active } = req.body;
     const id = generateId();
     await pool.query(
@@ -827,16 +905,31 @@ app.get('/api/provider/:slug/appointments', async (req, res) => {
    }
 });
 
-app.post('/api/provider/:slug/book', async (req, res) => {
+app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, res) => {
   try {
     const { providerId, clientName, clientWhatsApp, clientPhone, clientEmail, services, totalPrice, totalDuration, bufferTime, bookingSource, status, startAt, endAt } = req.body;
     
     // Validate working hours
-    const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken" FROM users WHERE id = $1', [providerId]);
+    const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", plan FROM users WHERE id = $1', [providerId]);
     if (providerUser.rows.length === 0) {
       return res.status(404).json({ error: 'Provedor não encontrado' });
     }
     const providerRow = providerUser.rows[0];
+
+    const plan = providerRow.plan || 'free';
+    if (plan !== 'gold') {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const startOfMonthMs = startOfMonth.getTime();
+      const countRes = await pool.query(
+        'SELECT count(*) FROM appointments WHERE provider_id = $1 AND start_at >= $2',
+        [providerId, startOfMonthMs]
+      );
+      const bookingCount = parseInt(countRes.rows[0].count, 10);
+      if (bookingCount >= 15) {
+        return res.status(403).json({ error: 'O limite mensal de agendamentos deste profissional foi atingido (limite de 15 agendamentos no Plano Gratuito). Se você é o profissional, faça o upgrade para o Plano Ouro para liberar agendamentos ilimitados!' });
+      }
+    }
 
     try {
       if (providerRow.scheduleOverrides) {
