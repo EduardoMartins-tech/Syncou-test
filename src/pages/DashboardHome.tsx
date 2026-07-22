@@ -72,6 +72,20 @@ export function DashboardHome() {
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
 
+  // Generic Confirm Modal
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    confirmText?: string;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
+
   const appointmentsRef = useRef<Appointment[]>([]);
 
   useEffect(() => {
@@ -891,27 +905,52 @@ export function DashboardHome() {
                           </div>
                         )}
                         {(apt.status === 'confirmed' || apt.status === 'Confirmado') && (
-                          <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="flex gap-2 mt-2">
                             <Button 
                               size="sm" 
-                              onClick={() => handleUpdateAppointmentStatus(apt.id, 'Concluído')} 
-                              className="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 hover:text-emerald-300 border-none"
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Concluir Serviço',
+                                  description: 'Tem certeza que deseja marcar este serviço como concluído?',
+                                  confirmText: 'Sim, Concluir',
+                                  onConfirm: () => handleUpdateAppointmentStatus(apt.id, 'Concluído')
+                                });
+                              }}
+                              className="flex-1 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 hover:text-emerald-300 border-none"
                             >
-                              <CheckCircle2 className="w-4 h-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Concluir</span> Serviço
+                              <CheckCircle2 className="w-4 h-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Concluir</span>
                             </Button>
                             <Button 
                               size="sm" 
                               onClick={() => {
-                                if (window.confirm("Desfazer confirmação e voltar para Pendente?")) {
-                                  handleUpdateAppointmentStatus(apt.id, 'Pendente');
-                                }
+                                setCancelingApt(apt);
+                                setCancelReason('');
+                                setIsCancelModalOpen(true);
+                              }}
+                              variant="destructive" 
+                              className="flex-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none"
+                            >
+                              <XCircle className="w-4 h-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Cancelar</span>
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Desfazer Confirmação',
+                                  description: 'Tem certeza que deseja desfazer a confirmação e voltar este agendamento para Pendente?',
+                                  confirmText: 'Sim, Desfazer',
+                                  onConfirm: () => handleUpdateAppointmentStatus(apt.id, 'Pendente')
+                                });
                               }}
                               variant="outline" 
-                              className="bg-[#1A1333] border-[#2D214F] text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]"
+                              className="w-10 px-0 flex-shrink-0 bg-[#1A1333] border-[#2D214F] text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]"
+                              title="Desfazer e voltar para Pendente"
                             >
-                              <RefreshCcw className="w-4 h-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Desfazer</span>
+                              <RefreshCcw className="w-4 h-4" />
                             </Button>
                           </div>
                         )}
@@ -1029,6 +1068,33 @@ export function DashboardHome() {
            </div>
         </div>
       )}
+
+      {/* Generic Confirm Modal */}
+      <Dialog open={confirmModal.isOpen} onOpenChange={(open) => !open && setConfirmModal(prev => ({ ...prev, isOpen: false }))}>
+        <DialogContent className="sm:max-w-[425px] bg-[#130E20] border-[#2D214F] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">{confirmModal.title}</DialogTitle>
+            <CardDescription className="text-[#9B8FC0]">
+              {confirmModal.description}
+            </CardDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4 flex sm:justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]">
+              Cancelar
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => {
+                confirmModal.onConfirm();
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+              }} 
+              className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+            >
+              {confirmModal.confirmText || 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Cancellation Reason Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
