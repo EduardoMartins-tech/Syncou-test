@@ -117,6 +117,8 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
