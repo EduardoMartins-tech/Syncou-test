@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { toast } from 'sonner';
+import { useNotification } from '../hooks/useNotification';
 import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -26,6 +26,7 @@ type OnboardingForm = z.infer<typeof onboardingSchema>;
 
 export function Onboarding() {
   const navigate = useNavigate();
+  const { notifySuccess, notifyError, notifyFormError } = useNotification();
   const { currentUser, loading, updateUser } = useAuth();
   const [saving, setSaving] = useState(false);
 
@@ -104,7 +105,7 @@ export function Onboarding() {
     if (!currentUser) return;
 
     if (slugAvailable === false) {
-      toast.error("Este link personalizado já está em uso por outro profissional.");
+      notifyError("Este link personalizado já está em uso por outro profissional.");
       return;
     }
 
@@ -119,11 +120,11 @@ export function Onboarding() {
       });
 
       if (success) {
-        toast.success("Perfil criado com sucesso!");
+        notifySuccess("Perfil criado com sucesso!");
         navigate('/dashboard');
       }
     } catch (err) {
-      toast.error("Ocorreu um erro ao salvar suas informações.");
+      notifyError("Ocorreu um erro ao salvar suas informações.");
     } finally {
       setSaving(false);
     }

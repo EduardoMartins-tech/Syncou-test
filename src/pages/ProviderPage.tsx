@@ -11,7 +11,7 @@ import { Clock, Plus, Check, ChevronLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, isSameDay, addMinutes, isAfter, startOfDay, addDays, getHours, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner';
+import { useNotification } from '../hooks/useNotification';
 
 interface Provider {
   id: string;
@@ -39,6 +39,7 @@ interface Service {
 
 export function ProviderPage() {
   const { slug } = useParams();
+  const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
   const [provider, setProvider] = useState<Provider | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,7 +254,7 @@ export function ProviderPage() {
       setStep(4);
     } catch(err: any) {
       console.error(err);
-      toast.error(err.message || 'Erro ao agendar. Tente novamente.');
+      notifyError(err.message || 'Erro ao agendar. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }

@@ -9,14 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Upload, User, Key, CreditCard } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'sonner';
+import { useNotification } from '../hooks/useNotification';
 import { useAuth } from '../contexts/AuthContext';
 
 const accountSchema = z.object({
   avatarUrl: z.string().optional().or(z.literal('')),
+  displayName: z.string().min(2, "O nome deve ter no mínimo 2 caracteres").max(60, "O nome pode ter no máximo 60 caracteres"),
 });
 
-const passwordSchema = z.object({
+const standardPasswordSchema = z.object({
   currentPassword: z.string().min(1, "A senha atual é obrigatória"),
   newPassword: z.string()
     .min(8, "A nova senha deve ter no mínimo 8 caracteres")
@@ -29,24 +30,41 @@ const passwordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const googlePasswordSchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: z.string()
+    .min(8, "A nova senha deve ter no mínimo 8 caracteres")
+    .regex(/[A-Z]/, "Deve conter pelo menos uma letra maiúscula")
+    .regex(/\d/, "Deve conter pelo menos um número")
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, "Deve conter pelo menos um caractere especial"),
+  confirmPassword: z.string().min(1, "A confirmação é obrigatória"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "As senhas não coincidem",
+  path: ["confirmPassword"],
+});
+
 type AccountForm = z.infer<typeof accountSchema>;
-type PasswordForm = z.infer<typeof passwordSchema>;
+type PasswordForm = z.infer<typeof standardPasswordSchema>;
 
 export function DashboardAccount() {
-  const { currentUser, getAuthHeaders, updateUser } = useAuth();
+  const { currentUser, getAuthHeaders, updateUser, refreshUser } = useAuth();
+  const { notifySuccess, notifyError, notifyLoading, dismiss } = useNotification();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const isGoogleUser = currentUser?.authProvider === 'google';
 
   const { register: registerAccount, handleSubmit: handleSubmitAccount, formState: { errors: accountErrors }, setValue, watch } = useForm<AccountForm>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
       avatarUrl: currentUser?.avatarUrl || '',
+      displayName: currentUser?.displayName || '',
     }
   });
 
-  const { register: registerPassword, handleSubmit: handleSubmitPassword, formState: { errors: passwordErrors }, reset: resetPassword } = useForm<PasswordForm>({
-    resolver: zodResolver(passwordSchema),
+  const { register: registerPassword, handleSubmit: handleSubmitPassword, formState: { errors: passwordErrors }, reset: resetPassword } = useForm<any>({
+    resolver: zodResolver(isGoogleUser ? googlePasswordSchema : standardPasswordSchema),
   });
 
   const avatarUrl = watch('avatarUrl');
@@ -56,7 +74,7 @@ export function DashboardAccount() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 2MB.");
+      notifyError("A imagem deve ter no máximo 2MB.");
       return;
     }
 
@@ -91,7 +109,7 @@ export function DashboardAccount() {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
             setValue('avatarUrl', dataUrl, { shouldDirty: true, shouldValidate: true });
           } else {
-             toast.error("Erro ao processar imagem.");
+             notifyError("Erro ao processar imagem.");
           }
         };
         img.src = event.target?.result as string;
@@ -99,7 +117,7 @@ export function DashboardAccount() {
       reader.readAsDataURL(file);
     } catch (err) {
       console.error(err);
-      toast.error('Falha ao processar imagem.');
+      notifyError('Falha ao processar imagem.');
     } finally {
       setUploading(false);
     }
@@ -107,26 +125,26 @@ export function DashboardAccount() {
 
   const onSubmitAccount = async (data: AccountForm) => {
     setLoading(true);
-    const loadingToast = toast.loading('Salvando foto...');
+    const loadingToast = notifyLoading('Salvando dados...');
     try {
-      const success = await updateUser({ avatarUrl: data.avatarUrl });
+      const success = await updateUser({ avatarUrl: data.avatarUrl, displayName: data.displayName });
       if (success) {
-        toast.dismiss(loadingToast);
-        toast.success('Foto salva com sucesso!');
+        dismiss(loadingToast);
+        notifySuccess('Dados salvos com sucesso!');
       } else {
-        toast.dismiss(loadingToast);
+        dismiss(loadingToast);
       }
     } catch (err) {
-       toast.dismiss(loadingToast);
-       toast.error("Erro interno ao salvar foto.");
+       dismiss(loadingToast);
+       notifyError("Erro interno ao salvar dados.");
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmitPassword = async (data: PasswordForm) => {
+  const onSubmitPassword = async (data: any) => {
     setPasswordLoading(true);
-    const loadingToast = toast.loading('Atualizando senha...');
+    const loadingToast = notifyLoading('Atualizando senha...');
     try {
       const res = await fetch('/api/users/change-password', {
         method: 'POST',
@@ -141,17 +159,20 @@ export function DashboardAccount() {
       });
 
       if (res.ok) {
-         toast.dismiss(loadingToast);
-         toast.success('Senha atualizada com sucesso!');
+         dismiss(loadingToast);
+         notifySuccess('Senha atualizada com sucesso!');
          resetPassword();
+         if (isGoogleUser) {
+           await refreshUser();
+         }
       } else {
          const errData = await res.json();
-         toast.dismiss(loadingToast);
-         toast.error(errData.error || 'Erro ao atualizar senha.');
+         dismiss(loadingToast);
+         notifyError(errData.error || 'Erro ao atualizar senha.');
       }
     } catch (err) {
-       toast.dismiss(loadingToast);
-       toast.error("Erro interno ao atualizar senha.");
+       dismiss(loadingToast);
+       notifyError("Erro interno ao atualizar senha.");
     } finally {
       setPasswordLoading(false);
     }
@@ -226,7 +247,14 @@ export function DashboardAccount() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                     <Label className="text-[#9B8FC0]">Nome</Label>
-                    <Input disabled value={currentUser?.displayName || ''} className="bg-[#0B0914]/50 border-[#2D214F]/50 text-white opacity-70" />
+                    <Input 
+                      {...registerAccount('displayName')} 
+                      className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-[#8B5CF6]" 
+                      placeholder="Seu nome"
+                    />
+                    {accountErrors.displayName && (
+                      <p className="text-sm text-red-400 mt-1">{accountErrors.displayName.message as string}</p>
+                    )}
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[#9B8FC0]">E-mail</Label>
@@ -250,28 +278,30 @@ export function DashboardAccount() {
         <Card className="bg-[#130E20] border-[#2D214F] shadow-sm">
           <CardHeader>
             <CardTitle className="text-xl text-white flex items-center gap-2">
-               <Key className="w-5 h-5 text-violet-400" /> Alterar Senha
+               <Key className="w-5 h-5 text-violet-400" /> {isGoogleUser ? 'Criar Senha de Acesso' : 'Alterar Senha'}
             </CardTitle>
             <CardDescription className="text-[#9B8FC0]">
-              Atualize sua senha de acesso ao painel.
+              {isGoogleUser ? 'Defina uma senha para poder acessar sua conta também via e-mail.' : 'Atualize sua senha de acesso ao painel.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmitPassword(onSubmitPassword)} className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[#9B8FC0]">Senha Atual</Label>
-                <Input type="password" {...registerPassword('currentPassword')} className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500" />
-                {passwordErrors.currentPassword && <p className="text-red-400 text-sm">{passwordErrors.currentPassword.message}</p>}
-              </div>
+              {!isGoogleUser && (
+                <div className="space-y-2">
+                  <Label className="text-[#9B8FC0]">Senha Atual</Label>
+                  <Input type="password" {...registerPassword('currentPassword')} className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500" />
+                  {passwordErrors.currentPassword && <p className="text-red-400 text-sm">{passwordErrors.currentPassword.message as string}</p>}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-[#9B8FC0]">Nova Senha</Label>
                 <Input type="password" {...registerPassword('newPassword')} className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500" />
-                {passwordErrors.newPassword && <p className="text-red-400 text-sm">{passwordErrors.newPassword.message}</p>}
+                {passwordErrors.newPassword && <p className="text-red-400 text-sm">{passwordErrors.newPassword.message as string}</p>}
               </div>
               <div className="space-y-2">
                 <Label className="text-[#9B8FC0]">Confirmar Nova Senha</Label>
                 <Input type="password" {...registerPassword('confirmPassword')} className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500" />
-                {passwordErrors.confirmPassword && <p className="text-red-400 text-sm">{passwordErrors.confirmPassword.message}</p>}
+                {passwordErrors.confirmPassword && <p className="text-red-400 text-sm">{passwordErrors.confirmPassword.message as string}</p>}
               </div>
               <div className="pt-2">
                  <Button 
@@ -279,7 +309,7 @@ export function DashboardAccount() {
                    disabled={passwordLoading}
                    className="w-full bg-[#1A1333] border border-[#2D214F] text-[#E2D9F3] hover:text-white hover:bg-[#2D214F]"
                  >
-                   {passwordLoading ? 'Atualizando...' : 'Atualizar Senha'}
+                   {passwordLoading ? 'Atualizando...' : (isGoogleUser ? 'Salvar Senha' : 'Atualizar Senha')}
                  </Button>
               </div>
             </form>

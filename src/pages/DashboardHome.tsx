@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { useNotification } from '../hooks/useNotification';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +42,7 @@ interface Appointment {
 }
 
 export function DashboardHome() {
+  const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
   const { currentUser, getAuthHeaders } = useAuth();
   // removed googleAccessToken as this is a local build now, but keeping var for stub
   const googleAccessToken = null;
@@ -127,7 +128,7 @@ export function DashboardHome() {
                 });
               } else {
                 newAppointments.forEach((apt: Appointment) => {
-                   toast.success(`Novo agendamento de ${apt.clientName}!`);
+                   notifySuccess(`Novo agendamento de ${apt.clientName}!`);
                 });
               }
             }
@@ -169,7 +170,7 @@ export function DashboardHome() {
 
     try {
       if (editingService) {
-        toast.error('Edição de serviço atual não suportada direto na api demo.');
+        notifyError('Edição de serviço atual não suportada direto na api demo.');
       } else {
         const res = await fetch('/api/services', {
           method: 'POST',
@@ -180,18 +181,18 @@ export function DashboardHome() {
           body: JSON.stringify({ title, description, duration, bufferTime, price, active })
         });
         if (res.ok) {
-          toast.success('Serviço criado com sucesso!');
+          notifySuccess('Serviço criado com sucesso!');
           fetchServices();
         } else {
           const resData = await res.json().catch(() => ({}));
-          toast.error(resData.error || 'Erro ao salvar serviço');
+          notifyError(resData.error || 'Erro ao salvar serviço');
         }
       }
       setIsServiceModalOpen(false);
       setEditingService(null);
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao salvar serviço');
+      notifyError('Erro ao salvar serviço');
     }
   };
 
@@ -204,10 +205,10 @@ export function DashboardHome() {
       });
       if (res.ok) {
         setServices(services.filter(s => s.id !== id));
-        toast.success('Serviço removido');
+        notifySuccess('Serviço removido');
       }
     } catch(err) {
-      toast.error('Erro ao remover');
+      notifyError('Erro ao remover');
     }
   }
 
@@ -223,7 +224,7 @@ export function DashboardHome() {
        })
        if (!res.ok) throw new Error('Failed');
        
-       toast.success('Status atualizado');
+       notifySuccess('Status atualizado');
        fetchAppointments();
        
        if (status === 'Confirmado') {
@@ -256,7 +257,7 @@ export function DashboardHome() {
        }
        
     } catch(err) {
-       toast.error('Erro ao atualizar status');
+       notifyError('Erro ao atualizar status');
     }
   }
 
@@ -310,7 +311,7 @@ export function DashboardHome() {
         const errorData = await res.json().catch(() => null);
         throw new Error(errorData?.error || 'Erro ao remarcar');
       }
-      toast.success('Agendamento remarcado com sucesso!');
+      notifySuccess('Agendamento remarcado com sucesso!');
       fetchAppointments();
       setIsRescheduleModalOpen(false);
       setReschedulingApt(null);
@@ -331,7 +332,7 @@ export function DashboardHome() {
 
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Erro ao remarcar o agendamento.');
+      notifyError(err.message || 'Erro ao remarcar o agendamento.');
     }
   };
 
@@ -348,35 +349,35 @@ export function DashboardHome() {
          body: JSON.stringify({ status: 'Cancelado', cancelReason })
       })
       if (!res.ok) throw new Error('fail');
-      toast.success('Agendamento cancelado com sucesso!');
+      notifySuccess('Agendamento cancelado com sucesso!');
       fetchAppointments();
       setIsCancelModalOpen(false);
       setCancelingApt(null);
       setCancelReason('');
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao cancelar o agendamento.');
+      notifyError('Erro ao cancelar o agendamento.');
     }
   };
 
   const handleSyncCalendar = async (isRetry = false) => {
     try {
-      const loadingToast = toast.loading(isRetry ? 'Re-sincronizando...' : 'Sincronizando com o Google Calendar...');
+      const loadingToast = notifyLoading(isRetry ? 'Re-sincronizando...' : 'Sincronizando com o Google Calendar...');
       const res = await fetch('/api/appointments/sync-all', {
         method: 'POST',
         headers: getAuthHeaders()
       });
-      toast.dismiss(loadingToast);
+      dismiss(loadingToast);
       
       const data = await res.json();
       if (res.ok) {
         if (data.synced > 0) {
-          toast.success(`✅ ${data.synced} agendamento(s) sincronizado(s) com sucesso na sua agenda do Google!`);
+          notifySuccess(`✅ ${data.synced} agendamento(s) sincronizado(s) com sucesso na sua agenda do Google!`);
         } else if (data.errors > 0) {
           console.error("GCal Sync Error:", data.lastError);
           const isAuthError = String(data.lastError).includes('Invalid Credentials') || String(data.lastError).includes('401') || String(data.lastError).includes('UNAUTHENTICATED');
           if (isAuthError && !isRetry) {
-             toast.info("Acesso ao Google expirou. Reconectando...");
+             notifyInfo("Acesso ao Google expirou. Reconectando...");
              try {
                 const result = await googleSignInForCalendar();
                 if (result?.accessToken) {
@@ -393,22 +394,22 @@ export function DashboardHome() {
                 }
              } catch(signInErr: any) {
                 if (signInErr.code !== 'auth/popup-closed-by-user') {
-                   toast.error("Falha ao reconectar. Por favor, tente novamente na aba Minha Página.");
+                   notifyError("Falha ao reconectar. Por favor, tente novamente na aba Minha Página.");
                 }
              }
           } else if (isAuthError && isRetry) {
-             toast.error(`❌ O acesso ao Google ainda é falho. Verifique suas permissões no Google.`);
+             notifyError(`❌ O acesso ao Google ainda é falho. Verifique suas permissões no Google.`);
           } else {
-             toast.error(`❌ Tentativa concluída, mas falhou em ${data.errors} agendamento(s). Erro: ${data.lastError ? String(data.lastError).substring(0, 80) : "Desconhecido"}.`, { duration: 8000 });
+             notifyError(`❌ Tentativa concluída, mas falhou em ${data.errors} agendamento(s). Erro: ${data.lastError ? String(data.lastError).substring(0, 80) : "Desconhecido"}.`, { duration: 8000 });
           }
         } else {
-          toast.info('Tudo atualizado! Nenhum agendamento pendente para sincronização.');
+          notifyInfo('Tudo atualizado! Nenhum agendamento pendente para sincronização.');
         }
       } else {
-        toast.error(data.error || 'Erro ao sincronizar. Tente reconectar sua conta.');
+        notifyError(data.error || 'Erro ao sincronizar. Tente reconectar sua conta.');
       }
     } catch(err) {
-      toast.error('Erro interno de conexão. Tente novamente mais tarde.');
+      notifyError('Erro interno de conexão. Tente novamente mais tarde.');
     }
   };
 
@@ -508,7 +509,7 @@ export function DashboardHome() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Arquivo CSV exportado com sucesso!');
+    notifySuccess('Arquivo CSV exportado com sucesso!');
   };
 
   return (
@@ -537,7 +538,7 @@ export function DashboardHome() {
           {currentSlug && (
              <Button variant="outline" className="w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);
-                toast.success("Link copiado!");
+                notifySuccess("Link copiado!");
              }}>
                <ExternalLink className="w-4 h-4 mr-2" />
                Copiar

@@ -10,12 +10,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Copy, ExternalLink, RefreshCw, Upload, User, Plus, Trash2, CalendarX2, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { googleSignInForCalendar } from '../lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNotification } from '../hooks/useNotification';
 
 const slugSchema = z.object({
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens").max(60),
@@ -43,6 +43,7 @@ type SettingsForm = z.infer<typeof slugSchema>;
 
 export function DashboardSettings() {
   const { currentUser, getAuthHeaders, updateUser } = useAuth();
+  const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currentSlug, setCurrentSlug] = useState('');
@@ -74,11 +75,11 @@ export function DashboardSettings() {
       
       await updateUser({ scheduleOverrides: newOverrides });
       setScheduleOverrides(newOverrides);
-      toast.success(`${multipleClosedDates.length} dia(s) marcado(s) como fechado(s)!`);
+      notifySuccess(`${multipleClosedDates.length} dia(s) marcado(s) como fechado(s)!`);
       setMultipleClosedDates([]);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao adicionar exceções.");
+      notifyError("Erro ao adicionar exceções.");
     } finally {
       setSavingMultiple(false);
     }
@@ -98,32 +99,32 @@ export function DashboardSettings() {
            body: JSON.stringify({ token: result.accessToken }),
          });
          setGoogleCalendarConnected(true);
-         toast.success("Google Agenda conectado com sucesso!");
+         notifySuccess("Google Agenda conectado com sucesso!");
       }
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
-         toast.error("Falha ao conectar Google Agenda.");
+         notifyError("Falha ao conectar Google Agenda.");
       }
     }
   };
 
   const handleTestGoogleCalendar = async () => {
     try {
-      const loadingToast = toast.loading("Enviando evento de teste...");
+      const loadingToast = notifyLoading("Enviando evento de teste...");
       const res = await fetch('/api/users/test-calendar', {
         method: 'POST',
         headers: getAuthHeaders()
       });
-      toast.dismiss(loadingToast);
+      dismiss(loadingToast);
       
       if (res.ok) {
-        toast.success("✅ Evento de teste criado! Verifique seu Google Calendar.");
+        notifySuccess("✅ Evento de teste criado! Verifique seu Google Calendar.");
       } else {
         const errorData = await res.json();
-        toast.error(`❌ Erro ao sincronizar: ${errorData.error}. Por favor, reconecte sua conta e use o botão "Sincronizar" na Dashboard para tentar novamente.`, { duration: 8000 });
+        notifyError(`❌ Erro ao sincronizar: ${errorData.error}. Por favor, reconecte sua conta e use o botão "Sincronizar" na Dashboard para tentar novamente.`, { duration: 8000 });
       }
     } catch (err) {
-      toast.error("Erro interno ao testar conexão. Por favor, reconecte e use o botão Sincronizar na Dashboard.");
+      notifyError("Erro interno ao testar conexão. Por favor, reconecte e use o botão Sincronizar na Dashboard.");
     }
   };
 
@@ -150,7 +151,7 @@ export function DashboardSettings() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('A imagem não pode ter mais que 2MB');
+      notifyError('A imagem não pode ter mais que 2MB');
       return;
     }
 
@@ -186,24 +187,24 @@ export function DashboardSettings() {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
             setValue('avatarUrl', dataUrl, { shouldDirty: true, shouldValidate: true });
           } else {
-             toast.error("Erro ao processar imagem.");
+             notifyError("Erro ao processar imagem.");
           }
           setUploading(false);
         };
         img.onerror = () => {
-          toast.error("Erro ao carregar a imagem.");
+          notifyError("Erro ao carregar a imagem.");
           setUploading(false);
         };
         img.src = event.target?.result as string;
       };
       reader.onerror = () => {
-        toast.error("Erro ao ler o arquivo.");
+        notifyError("Erro ao ler o arquivo.");
         setUploading(false);
       };
       reader.readAsDataURL(file);
     } catch (err) {
       console.error('Erro no upload', err);
-      toast.error('Falha ao processar a imagem');
+      notifyError('Falha ao processar a imagem');
       setUploading(false);
     }
   };
@@ -260,10 +261,10 @@ export function DashboardSettings() {
 
       await updateUser(payload);
       setCurrentSlug(data.slug);
-      toast.success("Perfil atualizado com sucesso!");
+      notifySuccess("Perfil atualizado com sucesso!");
     } catch (err: any) {
       console.error("Erro real ao salvar:", err);
-      toast.error(err.message || "Erro ao atualizar perfil. Tente novamente.");
+      notifyError(err.message || "Erro ao atualizar perfil. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -285,14 +286,14 @@ export function DashboardSettings() {
       
       await updateUser({ scheduleOverrides: newOverrides });
       setScheduleOverrides(newOverrides);
-      toast.success("Exceção adicionada com sucesso!");
+      notifySuccess("Exceção adicionada com sucesso!");
       
       // Reset form
       setOverrideDate('');
       setOverrideIsClosed(false);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao adicionar exceção.");
+      notifyError("Erro ao adicionar exceção.");
     } finally {
       setSavingOverride(false);
     }
@@ -306,10 +307,10 @@ export function DashboardSettings() {
       
       await updateUser({ scheduleOverrides: newOverrides });
       setScheduleOverrides(newOverrides);
-      toast.success("Exceção removida com sucesso!");
+      notifySuccess("Exceção removida com sucesso!");
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao remover exceção.");
+      notifyError("Erro ao remover exceção.");
     }
   };
 
@@ -318,7 +319,7 @@ export function DashboardSettings() {
 
   const copyLink = () => {
     navigator.clipboard.writeText(publicUrl);
-    toast.success("Link copiado para a área de transferência!");
+    notifySuccess("Link copiado para a área de transferência!");
   };
 
   return (

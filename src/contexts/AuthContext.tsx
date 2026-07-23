@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { useNotification } from '../hooks/useNotification';
 
 interface AuthContextType {
   currentUser: any | null;
@@ -28,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { notifySuccess, notifyError } = useNotification();
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
       
       if (!res.ok) {
-        toast.error(data.error || 'Erro no login');
+        notifyError(data.error || 'Erro no login');
         return false;
       }
       
@@ -89,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return true;
     } catch (err) {
-      toast.error('Erro de conexão.');
+      notifyError('Erro de conexão.');
       return false;
     }
   };
@@ -104,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
       
       if (!res.ok) {
-        toast.error(data.error || 'Erro no registro');
+        notifyError(data.error || 'Erro no registro');
         return false;
       }
       
@@ -121,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return true;
     } catch (err) {
-      toast.error('Erro de conexão.');
+      notifyError('Erro de conexão.');
       return false;
     }
   };
@@ -136,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
       
       if (!res.ok) {
-        toast.error(data.error || 'Erro no login com Google');
+        notifyError(data.error || 'Erro no login com Google');
         return false;
       }
       
@@ -152,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return true;
     } catch (err) {
-      toast.error('Erro de conexão.');
+      notifyError('Erro de conexão.');
       return false;
     }
   };
@@ -160,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     localStorage.removeItem('syncou_token');
     setCurrentUser(null);
-    toast.success('Desconectado com sucesso');
+    notifySuccess('Desconectado com sucesso');
   };
 
   const updateUser = async (data: any) => {
@@ -176,14 +177,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const resData = await res.json();
       
       if (!res.ok) {
-        toast.error(resData.error || 'Erro ao atualizar dados');
+        notifyError(resData.error || 'Erro ao atualizar dados');
         return false;
       }
       
       setCurrentUser((prev: any) => ({ ...prev, ...data }));
       return true;
     } catch (err) {
-      toast.error('Erro de conexão.');
+      notifyError('Erro de conexão.');
       return false;
     }
   };

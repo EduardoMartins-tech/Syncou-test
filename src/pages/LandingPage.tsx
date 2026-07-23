@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Share2, CalendarDays, Settings, Mail, Lock, Loader2, XCircle, Check, Star } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Logo } from '../components/Logo';
-import { toast } from 'sonner';
+import { useNotification } from '../hooks/useNotification';
 import { googleSignInBasic } from '../lib/firebase';
 import { 
   Dialog, 
@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
   const { currentUser, login, register, loginWithGoogle } = useAuth();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -41,7 +42,7 @@ export function LandingPage() {
 
   const handleGoogleSignIn = async () => {
     if (authMode === 'register' && !hasAcceptedTerms) {
-      toast.error('Você precisa aceitar os Termos de Serviço para criar uma conta.');
+      notifyError('Você precisa aceitar os Termos de Serviço para criar uma conta.');
       return;
     }
     
@@ -55,13 +56,15 @@ export function LandingPage() {
           user.displayName || ''
         );
         if (success) {
-          toast.success('Login efetuado com sucesso!');
+          notifySuccess('Login efetuado com sucesso!');
           setIsAuthModalOpen(false);
         }
       }
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user') {
-        toast.error('Erro ao fazer login com o Google.');
+      if (error.code === 'auth/popup-closed-by-user') {
+        notifyError('O login com Google foi cancelado. Você pode usar seu e-mail e senha.');
+      } else {
+        notifyError('Erro ao fazer login com o Google. Use e-mail e senha, se preferir.');
       }
     } finally {
       setIsGoogleSubmitting(false);
@@ -84,17 +87,17 @@ export function LandingPage() {
     const cleanEmail = email.trim().toLowerCase();
     
     if (!cleanEmail || !password) {
-      toast.error('Preencha todos os campos.');
+      notifyError('Preencha todos os campos.');
       return;
     }
     
     if (authMode === 'register' && !isValidPassword) {
-      toast.error('Por favor, atenda a todos os critérios da senha.');
+      notifyError('Por favor, atenda a todos os critérios da senha.');
       return;
     }
 
     if (authMode === 'register' && !hasAcceptedTerms) {
-      toast.error('Você precisa aceitar os Termos de Serviço para criar uma conta.');
+      notifyError('Você precisa aceitar os Termos de Serviço para criar uma conta.');
       return;
     }
 
@@ -103,7 +106,7 @@ export function LandingPage() {
       if (authMode === 'login') {
         const success = await login(cleanEmail, password);
         if (success) {
-          toast.success('Login efetuado com sucesso!');
+          notifySuccess('Login efetuado com sucesso!');
           setIsAuthModalOpen(false);
         }
       } else {
@@ -115,25 +118,25 @@ export function LandingPage() {
           });
           const data = await res.json();
           if (res.ok) {
-            toast.success('Código enviado! Verifique seu e-mail (ou o console).');
+            notifySuccess('Código enviado! Verifique seu e-mail (ou o console).');
             setAuthStep('otp');
           } else {
-            toast.error(data.error || 'Erro ao enviar código.');
+            notifyError(data.error || 'Erro ao enviar código.');
           }
         } else {
           if (!otpCode) {
-            toast.error('Preencha o código.');
+            notifyError('Preencha o código.');
             return;
           }
           const success = await register(cleanEmail, password, otpCode);
           if (success) {
-            toast.success('Conta criada com sucesso!');
+            notifySuccess('Conta criada com sucesso!');
             setIsAuthModalOpen(false);
           }
         }
       }
     } catch (error: any) {
-      toast.error('Erro ao realizar autenticação.');
+      notifyError('Erro ao realizar autenticação.');
     } finally {
       setIsSubmitting(false);
     }

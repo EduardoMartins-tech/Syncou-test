@@ -216,8 +216,17 @@ async function runMigrations() {
         whatsapp_message_template TEXT,
         role VARCHAR(50) DEFAULT 'provider',
         plan VARCHAR(50) DEFAULT 'free',
+        auth_provider VARCHAR(50) DEFAULT 'email',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      
+      -- Add auth_provider if it doesn't exist
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='auth_provider') THEN 
+          ALTER TABLE users ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'email'; 
+        END IF; 
+      END $$;
       
       -- Alter table explicitly in case it already exists but without the new column
       ALTER TABLE users ADD COLUMN IF NOT EXISTS google_access_token TEXT;
@@ -235,6 +244,7 @@ async function runMigrations() {
         price REAL NOT NULL,
         active INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        google_event_id VARCHAR(255),
         FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -255,6 +265,7 @@ async function runMigrations() {
         start_at BIGINT NOT NULL,
         end_at BIGINT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        google_event_id VARCHAR(255),
         FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE CASCADE
       );
 
@@ -262,6 +273,7 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS idx_appointments_provider_dates ON appointments (provider_id, start_at, end_at);
     `);
     await client.query(`
+      ALTER TABLE appointments ADD COLUMN IF NOT EXISTS google_event_id VARCHAR(255);
       CREATE TABLE IF NOT EXISTS otp_codes (
         email VARCHAR(255) PRIMARY KEY,
         code VARCHAR(10) NOT NULL,
@@ -363,8 +375,8 @@ app.post('/api/auth/google', authLimiter.middleware(), async (req, res) => {
       const dpName = displayName || email.split('@')[0];
       const placeholderHash = await bcrypt.hash(generateId(), 10); // Random impossible password
       await pool.query(
-        'INSERT INTO users (id, email, password_hash, display_name, role, working_days, working_hours_start, working_hours_end) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-        [id, email, placeholderHash, dpName, 'provider', workingDays, '09:00', '18:00']
+        'INSERT INTO users (id, email, password_hash, display_name, role, working_days, working_hours_start, working_hours_end, auth_provider) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        [id, email, placeholderHash, dpName, 'provider', workingDays, '09:00', '18:00', 'google']
       );
     }
     
@@ -421,11 +433,15 @@ app.post('/api/auth/register', authLimiter.middleware(), async (req, res) => {
 app.post('/api/auth/login', authLimiter.middleware(), async (req, res) => {
   try {
     const { email, password } = req.body;
-    const result = await pool.query('SELECT id, email, password_hash FROM users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id, email, password_hash, auth_provider FROM users WHERE email = $1', [email]);
     const user = result.rows[0];
     
     if (!user) return res.status(400).json({ error: 'Usuário não encontrado.' });
     
+    if (user.auth_provider === 'google') {
+      return res.status(400).json({ error: 'Esta conta foi criada com o Google. Por favor, faça login com o Google ou defina uma senha.' });
+    }
+
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(400).json({ error: 'Senha incorreta.' });
     
@@ -439,7 +455,7 @@ app.post('/api/auth/login', authLimiter.middleware(), async (req, res) => {
 app.get('/api/users/me', authenticateToken, async (req: any, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role, plan FROM users WHERE id = $1',
+      'SELECT id, email, slug, display_name as "displayName", avatar_url as "avatarUrl", bio, working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", whatsapp, schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", whatsapp_message_template as "whatsappMessageTemplate", role, plan, auth_provider as "authProvider" FROM users WHERE id = $1',
       [req.user.id]
     );
     const user = result.rows[0];
@@ -611,16 +627,25 @@ app.post('/api/users/change-password', authenticateToken, async (req: any, res: 
     const { currentPassword, newPassword } = req.body;
     const userId = req.user.id;
     
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
+    if (!newPassword) {
+      return res.status(400).json({ error: 'A nova senha é obrigatória.' });
     }
     
-    const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+    const result = await pool.query('SELECT password_hash, auth_provider FROM users WHERE id = $1', [userId]);
     const user = result.rows[0];
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
     
-    // Some users might have signed up with Google and don't have a password set up the normal way,
-    // although our schema uses empty string or generated if they don't have one? Let's check bcrypt.
+    // If the user signed up with Google and hasn't set a password yet, we allow setting it without current password
+    if (user.auth_provider === 'google') {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await pool.query('UPDATE users SET password_hash = $1, auth_provider = $2 WHERE id = $3', [hashedPassword, 'google_email', userId]);
+      return res.json({ success: true, message: 'Senha criada com sucesso.' });
+    }
+    
+    if (!currentPassword) {
+      return res.status(400).json({ error: 'A senha atual é obrigatória.' });
+    }
+
     if (user.password_hash) {
       const valid = await bcrypt.compare(currentPassword, user.password_hash);
       if (!valid) return res.status(400).json({ error: 'Senha atual incorreta.' });
@@ -783,19 +808,12 @@ app.put('/api/appointments/:id', authenticateToken, async (req: any, res) => {
            let isClosed = false;
        
            const startDateObj = new Date(Number(startAt));
-           const pad = (n: number) => n.toString().padStart(2, '0');
+           const pad = (n) => n.toString().padStart(2, '0');
            const dateKey = `${startDateObj.getFullYear()}-${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
        
            // National holidays logic (Brazil)
            const holidays = [
-             '01-01', // Confraternização Universal
-             '04-21', // Tiradentes
-             '05-01', // Dia do Trabalhador
-             '09-07', // Independência do Brasil
-             '10-12', // Nossa Sra. Aparecida
-             '11-02', // Finados
-             '11-15', // Proclamação da República
-             '12-25'  // Natal
+             '01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'
            ];
            const monthDay = `${pad(startDateObj.getMonth() + 1)}-${pad(startDateObj.getDate())}`;
            
@@ -841,23 +859,82 @@ app.put('/api/appointments/:id', authenticateToken, async (req: any, res) => {
            return res.status(400).json({ error: 'Conflito de agenda: Você já possui outro compromisso neste horário.' });
          }
 
-         // Reschedule scenario (could also include status change if we want)
+         // Reschedule scenario
          await pool.query(
            'UPDATE appointments SET status = COALESCE($1, status), cancel_reason = COALESCE($2, cancel_reason), start_at = $3, end_at = $4 WHERE id = $5 AND provider_id = $6',
            [status || null, cancelReason ?? null, startAt, endAt, req.params.id, req.user.id]
          );
+         
+         // Update in Google Calendar if rescheduled
+         try {
+             const aptRes = await pool.query('SELECT google_event_id, client_name, client_email, client_whatsapp, services FROM appointments WHERE id = $1 AND provider_id = $2', [req.params.id, req.user.id]);
+             const googleEventId = aptRes.rows[0]?.google_event_id;
+             if (googleEventId) {
+                const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
+                const googleAccessToken = providerRes.rows[0]?.google_access_token;
+                if (googleAccessToken) {
+                   const patchEvent = {
+                      start: { dateTime: new Date(Number(startAt)).toISOString() },
+                      end: { dateTime: new Date(Number(endAt)).toISOString() }
+                   };
+                   
+                   const gCalRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+                      method: 'PATCH',
+                      headers: {
+                         'Authorization': `Bearer ${googleAccessToken}`,
+                         'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify(patchEvent)
+                   });
+                   if (!gCalRes.ok) {
+                      console.error('Failed to update GCal event:', await gCalRes.text());
+                   } else {
+                      console.log('GCal event updated successfully.');
+                   }
+                }
+             }
+         } catch (e) {
+             console.error("Error updating GCal:", e);
+         }
       } else {
          await pool.query(
            'UPDATE appointments SET status = $1, cancel_reason = COALESCE($2, cancel_reason) WHERE id = $3 AND provider_id = $4',
            [status, cancelReason ?? null, req.params.id, req.user.id]
          );
+         
+         // Delete from Google Calendar if cancelled
+         if (status === 'cancelled' || status === 'Cancelado') {
+             try {
+                const aptRes = await pool.query('SELECT google_event_id FROM appointments WHERE id = $1 AND provider_id = $2', [req.params.id, req.user.id]);
+                const googleEventId = aptRes.rows[0]?.google_event_id;
+                if (googleEventId) {
+                   const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
+                   const googleAccessToken = providerRes.rows[0]?.google_access_token;
+                   if (googleAccessToken) {
+                      const gCalRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+                         method: 'DELETE',
+                         headers: {
+                            'Authorization': `Bearer ${googleAccessToken}`
+                         }
+                      });
+                      if (!gCalRes.ok) {
+                         console.error('Failed to delete GCal event:', await gCalRes.text());
+                      } else {
+                         console.log('GCal event deleted successfully.');
+                         await pool.query('UPDATE appointments SET google_event_id = NULL WHERE id = $1', [req.params.id]);
+                      }
+                   }
+                }
+             } catch (e) {
+                console.error("Error deleting from GCal:", e);
+             }
+         }
       }
       res.json({ success: true });
    } catch (err: any) {
       res.status(500).json({ error: err.message });
    }
 });
-
 app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: any) => {
    try {
       const providerRes = await pool.query('SELECT google_access_token FROM users WHERE id = $1', [req.user.id]);
@@ -868,7 +945,7 @@ app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: 
       }
 
       const result = await pool.query(
-        'SELECT * FROM appointments WHERE provider_id = $1 AND (status IS NULL OR status = $2 OR status = $3 OR status = $4)',
+        'SELECT * FROM appointments WHERE provider_id = $1 AND (status IS NULL OR status = $2 OR status = $3 OR status = $4) AND google_event_id IS NULL',
         [req.user.id, 'scheduled', 'Pendente', 'Confirmado']
       );
 
@@ -904,6 +981,10 @@ app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: 
               lastError = errText;
             }
           } else {
+            const gCalData = await gCalRes.json();
+            if (gCalData.id) {
+               await pool.query('UPDATE appointments SET google_event_id = $1 WHERE id = $2', [gCalData.id, apt.id]);
+            }
             syncedCount++;
           }
         } catch (e: any) {
@@ -919,7 +1000,6 @@ app.post('/api/appointments/sync-all', authenticateToken, async (req: any, res: 
       res.status(500).json({ error: err.message });
    }
 });
-
 // Public Provider Data
 app.get('/api/provider/:slug', async (req, res) => {
   try {
@@ -1102,6 +1182,10 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
         if (!gCalRes.ok) {
            console.error('Failed to create GCal event:', await gCalRes.text());
         } else {
+           const gCalData = await gCalRes.json();
+           if (gCalData.id) {
+              await pool.query('UPDATE appointments SET google_event_id = $1 WHERE id = $2', [gCalData.id, id]);
+           }
            console.log('GCal event created successfully.');
         }
       }
@@ -1117,12 +1201,15 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
 
 // ====== VITE INTEGRATION ====== //
 async function startServer() {
+console.log("startServer called");
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    console.log("Calling createViteServer");
+const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
-    app.use(vite.middlewares);
+    console.log("createViteServer done");
+app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -1131,7 +1218,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  console.log("Calling app.listen");
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
