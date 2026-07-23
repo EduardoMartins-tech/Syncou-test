@@ -35,6 +35,7 @@ interface Appointment {
   status: string;
   startAt: number;
   endAt: number;
+  createdAt?: string;
   date?: string;
   time?: string;
   bookingSource: string;
@@ -427,7 +428,17 @@ export function DashboardHome() {
     if (filterName && !apt.clientName.toLowerCase().includes(filterName.toLowerCase())) return false;
 
     return true;
-  }).sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
+  }).sort((a, b) => {
+    const isAPending = a.status === 'scheduled' || a.status === 'Pendente' || !a.status;
+    const isBPending = b.status === 'scheduled' || b.status === 'Pendente' || !b.status;
+    
+    if (isAPending && !isBPending) return -1;
+    if (!isAPending && isBPending) return 1;
+
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : a.startAt;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : b.startAt;
+    return bTime - aTime;
+  });
 
   const statusCounts = appointments.reduce((acc, apt) => {
     let s = 'Pendente';

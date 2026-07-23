@@ -774,7 +774,7 @@ app.delete('/api/services/:id', authenticateToken, async (req: any, res) => {
 app.get('/api/appointments', authenticateToken, async (req: any, res) => {
    try {
      const result = await pool.query(
-       'SELECT id, client_name as "clientName", client_whatsapp as "clientWhatsApp", client_phone as "clientPhone", client_email as "clientEmail", services, total_price as "totalPrice", total_duration as "totalDuration", booking_source as "bookingSource", status, cancel_reason as "cancelReason", start_at as "startAt", end_at as "endAt" FROM appointments WHERE provider_id = $1 ORDER BY start_at ASC',
+       'SELECT id, client_name as "clientName", client_whatsapp as "clientWhatsApp", client_phone as "clientPhone", client_email as "clientEmail", services, total_price as "totalPrice", total_duration as "totalDuration", booking_source as "bookingSource", status, cancel_reason as "cancelReason", start_at as "startAt", end_at as "endAt", created_at as "createdAt" FROM appointments WHERE provider_id = $1 ORDER BY start_at ASC',
        [req.user.id]
      );
      res.json(result.rows.map(r => ({
