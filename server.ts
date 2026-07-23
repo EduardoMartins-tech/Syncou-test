@@ -114,6 +114,7 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "https://api.stripe.com", "https://maps.googleapis.com", "https://wa.me", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://www.googleapis.com"],
       frameSrc: ["'self'", "https://js.stripe.com", "https://accounts.google.com", "https://*.firebaseapp.com"],
+      mediaSrc: ["'self'", "https://assets.mixkit.co"],
     },
   },
   crossOriginEmbedderPolicy: false,

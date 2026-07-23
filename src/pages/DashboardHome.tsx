@@ -739,7 +739,7 @@ export function DashboardHome() {
              </div>
              
              {/* Tabs para Filtro */}
-             <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 md:mx-0 md:px-0 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+             <div className="flex flex-wrap gap-2 pb-2">
                {['Todos', 'Pendente', 'Confirmado', 'Concluído', 'Cancelado'].map(status => (
                  <button
                    key={status}
