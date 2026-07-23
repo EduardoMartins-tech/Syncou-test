@@ -18,10 +18,28 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
 if ('serviceWorker' in navigator) {
-  registerSW({
+  const updateSW = registerSW({
     immediate: true,
+    onNeedRefresh() {
+      toast('Nova atualização disponível!', {
+        description: 'Clique em atualizar para carregar a nova versão do aplicativo.',
+        action: {
+          label: 'Atualizar',
+          onClick: () => {
+            updateSW(true);
+          }
+        },
+        duration: Infinity
+      });
+    },
     onRegistered(r) {
       console.log('SW Registered: ', r);
+      // Verifica se há atualização a cada 1 hora
+      if (r) {
+        setInterval(() => {
+          r.update();
+        }, 60 * 60 * 1000);
+      }
     },
     onRegisterError(error) {
       console.log('SW registration error', error);
