@@ -13,7 +13,35 @@ import { NotFound } from './pages/NotFound';
 import { TermsPage } from './pages/TermsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
-import { Toaster } from '@/components/ui/sonner';
+import { Toaster, toast } from 'sonner';
+
+// Global fetch interceptor for Rate Limiting (429 Too Many Requests)
+const originalFetch = window.fetch;
+window.fetch = async function (...args) {
+  const response = await originalFetch.apply(this, args);
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('Retry-After');
+    let message = 'Você fez muitas requisições recentemente. Por favor, aguarde um momento antes de tentar novamente.';
+    
+    if (retryAfter) {
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) {
+        if (seconds < 60) {
+           message = `Muitas requisições. Tente novamente em ${seconds} segundos.`;
+        } else {
+           message = `Muitas requisições. Tente novamente em ${Math.ceil(seconds / 60)} minuto(s).`;
+        }
+      }
+    }
+    
+    // Show toast for rate limit
+    toast.error('Acesso Limitado Temporariamente', {
+      description: message,
+      duration: 5000,
+    });
+  }
+  return response;
+};
 
 const router = createBrowserRouter([
   {

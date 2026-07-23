@@ -3,6 +3,7 @@ process.env.TZ = 'America/Sao_Paulo';
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import helmet from 'helmet';
 import { createServer as createViteServer } from 'vite';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
@@ -103,6 +104,20 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'syncou-super-secret-key-has-to-be-secure-1234';
 
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://api.stripe.com", "https://maps.googleapis.com", "https://wa.me"],
+      frameSrc: ["'self'", "https://js.stripe.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
@@ -113,6 +128,7 @@ const globalLimiter = new RateLimiter({
   max: 180, // max 180 requests per minute
   message: 'Muitas requisições vindas deste IP. Por favor, tente novamente em 1 minuto.'
 });
+app.use('/api/', globalLimiter.middleware());
 
 // 2. Strict Auth / Account rate limiting (Protects Login, Register and Google Auth paths)
 const authLimiter = new RateLimiter({
