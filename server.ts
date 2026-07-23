@@ -606,6 +606,37 @@ app.post('/api/test-book-sync', authenticateToken, async (req: any, res: any) =>
   }
 });
 
+app.post('/api/users/change-password', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Senha atual e nova senha são obrigatórias.' });
+    }
+    
+    const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    
+    // Some users might have signed up with Google and don't have a password set up the normal way,
+    // although our schema uses empty string or generated if they don't have one? Let's check bcrypt.
+    if (user.password_hash) {
+      const valid = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!valid) return res.status(400).json({ error: 'Senha atual incorreta.' });
+    } else {
+      return res.status(400).json({ error: 'Usuário não possui senha configurada.' });
+    }
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, userId]);
+    
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/users/me', authenticateToken, async (req: any, res: any) => {
   try {
     const data = req.body;

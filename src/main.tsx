@@ -8,6 +8,7 @@ import { ResetPassword } from './pages/ResetPassword';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardHome } from './pages/DashboardHome';
 import { DashboardSettings } from './pages/DashboardSettings';
+import { DashboardAccount } from './pages/DashboardAccount';
 import { DashboardCalendar } from './pages/DashboardCalendar';
 import { NotFound } from './pages/NotFound';
 import { TermsPage } from './pages/TermsPage';
@@ -79,6 +80,10 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <DashboardSettings />,
+      },
+      {
+        path: "account",
+        element: <DashboardAccount />,
       },
     ],
   },

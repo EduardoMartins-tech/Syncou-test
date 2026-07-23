@@ -21,7 +21,6 @@ const slugSchema = z.object({
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens").max(60),
   displayName: z.string().min(2).max(100),
   bio: z.string().max(500).optional(),
-  avatarUrl: z.string().optional().or(z.literal('')),
   workingHoursStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Use formato HH:MM (ex: 09:00)"),
   workingHoursEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Use formato HH:MM (ex: 18:00)"),
   workingDays: z.array(z.number()),
@@ -134,7 +133,6 @@ export function DashboardSettings() {
       slug: '',
       displayName: '',
       bio: '',
-      avatarUrl: '',
       workingHoursStart: '09:00',
       workingHoursEnd: '18:00',
       workingDays: [1, 2, 3, 4, 5],
@@ -143,7 +141,6 @@ export function DashboardSettings() {
     }
   });
 
-  const avatarUrl = watch('avatarUrl');
   const watchedDisplayName = watch('displayName');
   const watchedBio = watch('bio');
   const watchedSlug = watch('slug');
@@ -234,7 +231,6 @@ export function DashboardSettings() {
           slug: currentUser.slug || '',
           displayName: currentUser.displayName || '',
           bio: currentUser.bio || '',
-          avatarUrl: currentUser.avatarUrl || '',
           workingHoursStart: currentUser.workingHoursStart || '09:00',
           workingHoursEnd: currentUser.workingHoursEnd || '18:00',
           workingDays: parsedWorkingDays,
@@ -254,7 +250,6 @@ export function DashboardSettings() {
         slug: data.slug,
         displayName: data.displayName,
         bio: data.bio || '',
-        avatarUrl: data.avatarUrl || '',
         workingHoursStart: data.workingHoursStart,
         workingHoursEnd: data.workingHoursEnd,
         workingDays: JSON.stringify(data.workingDays),
@@ -335,7 +330,7 @@ export function DashboardSettings() {
         className="xl:col-span-2 space-y-8"
       >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Minha Página</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Loja</h1>
           <p className="text-[#9B8FC0]">Gerencie seu perfil público e seu link de agendamento.</p>
         </div>
 
@@ -401,45 +396,6 @@ export function DashboardSettings() {
                   className="bg-[#0B0914] border-[#2D214F] text-white focus-visible:ring-violet-500 h-11"
                 />
                 {errors.displayName && <p className="text-red-400 text-sm">{errors.displayName.message}</p>}
-              </div>
-
-              <div className="space-y-4">
-                <Label className="text-[#E2D9F3]">Foto de Perfil</Label>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                  <Avatar className="w-20 h-20 border-2 border-[#2D214F]">
-                    <AvatarImage src={avatarUrl} className="object-cover" />
-                    <AvatarFallback className="bg-[#1A1333] text-[#9B8FC0]">
-                      <User className="w-8 h-8" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      id="avatar-upload"
-                      onChange={handleFileUpload}
-                      disabled={uploading}
-                    />
-                    <Button
-                       type="button"
-                       variant="outline"
-                       className="bg-[#1A1333] border-[#2D214F] text-[#E2D9F3] hover:bg-[#2D214F] hover:text-white"
-                       disabled={uploading}
-                       onClick={() => document.getElementById('avatar-upload')?.click()}
-                    >
-                      {uploading ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4 mr-2" />
-                      )}
-                      {uploading ? "Carregando..." : "Alterar Foto"}
-                    </Button>
-                    <p className="text-xs text-[#5B4F81]">PNG, JPG ou WebP (máx. 2MB)</p>
-                  </div>
-                </div>
-                <input type="hidden" {...register('avatarUrl')} />
-                {errors.avatarUrl && <p className="text-red-400 text-sm">{errors.avatarUrl.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -790,7 +746,7 @@ export function DashboardSettings() {
             </div>
             <CardContent className="px-6 pb-6 pt-0 relative flex flex-col items-center text-center">
               <Avatar className="w-24 h-24 border-4 border-[#130E20] bg-[#1A1333] -mt-12 mb-4 shadow-xl">
-                <AvatarImage src={avatarUrl} className="object-cover" />
+                <AvatarImage src={currentUser?.avatarUrl || ''} className="object-cover" />
                 <AvatarFallback className="bg-[#1A1333] text-[#9B8FC0] text-2xl font-bold">
                   {watchedDisplayName?.charAt(0) || <User className="w-10 h-10" />}
                 </AvatarFallback>

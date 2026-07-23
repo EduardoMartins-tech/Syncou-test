@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings, LayoutDashboard, Calendar, Bell } from 'lucide-react';
+import { LogOut, Settings, LayoutDashboard, Calendar, Bell, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from './Logo';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +27,8 @@ export function DashboardLayout() {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Calendário', path: '/dashboard/calendar', icon: Calendar },
-    { name: 'Minha Página', path: '/dashboard/settings', icon: Settings },
+    { name: 'Loja', path: '/dashboard/settings', icon: Settings },
+    { name: 'Conta', path: '/dashboard/account', icon: User },
   ];
 
   return (
@@ -81,13 +82,13 @@ export function DashboardLayout() {
             <Logo className="w-8 h-8 text-violet-400" />
             <span className="font-semibold text-xl tracking-tight text-white">Syncou</span>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-3 overflow-x-auto items-center">
              {navItems.map(item => (
-                <Link key={item.path} to={item.path} className="text-[#9B8FC0] hover:text-white" title={item.name}>
+                <Link key={item.path} to={item.path} className="text-[#9B8FC0] hover:text-white flex-shrink-0" title={item.name}>
                   <item.icon className="w-5 h-5" strokeWidth={2} />
                 </Link>
              ))}
-             <button onClick={logout} className="text-[#9B8FC0] hover:text-red-400" title="Sair">
+             <button onClick={logout} className="text-[#9B8FC0] hover:text-red-400 flex-shrink-0" title="Sair">
                <LogOut className="w-5 h-5" strokeWidth={2} />
              </button>
           </div>
