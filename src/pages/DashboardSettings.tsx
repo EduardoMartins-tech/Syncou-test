@@ -27,6 +27,7 @@ const slugSchema = z.object({
   workOnHolidays: z.boolean().optional(),
   whatsapp: z.string().optional(),
   whatsappMessageTemplate: z.string().optional(),
+  avatarUrl: z.string().optional(),
 });
 
 const DAYS_OF_WEEK = [
@@ -139,6 +140,7 @@ export function DashboardSettings() {
       workingDays: [1, 2, 3, 4, 5],
       whatsapp: '',
       whatsappMessageTemplate: '',
+      avatarUrl: '',
     }
   });
 
@@ -238,6 +240,7 @@ export function DashboardSettings() {
           workOnHolidays: currentUser.workOnHolidays || false,
           whatsapp: currentUser.whatsapp || '',
           whatsappMessageTemplate: currentUser.whatsappMessageTemplate || '',
+          avatarUrl: currentUser.avatarUrl || '',
         });
      }
   }, [currentUser, reset]);
@@ -257,6 +260,7 @@ export function DashboardSettings() {
         workOnHolidays: data.workOnHolidays,
         whatsapp: cleanWhatsapp,
         whatsappMessageTemplate: data.whatsappMessageTemplate,
+        avatarUrl: data.avatarUrl,
       };
 
       await updateUser(payload);

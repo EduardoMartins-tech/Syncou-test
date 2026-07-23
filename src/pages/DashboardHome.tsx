@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check, CheckCircle2, XCircle, Download } from 'lucide-react';
+import { ExternalLink, Plus, Clock, DollarSign, Calendar as CalendarIcon, Edit2, Trash2, MessageSquare, TrendingUp, CheckCircle, RefreshCcw, Check, CheckCircle2, XCircle, Download, Bell } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +62,7 @@ export function DashboardHome() {
   // Status Filter ("Todos", "Pendente", "Confirmado", "Concluído", "Cancelado")
   const [filterStatus, setFilterStatus] = useState<string>('Todos');
   const [filterName, setFilterName] = useState<string>('');
+  const [notificationPerm, setNotificationPerm] = useState<string>(Notification.permission);
 
   // Cancel Modal
   const [cancelingApt, setCancelingApt] = useState<Appointment | null>(null);
@@ -122,10 +123,25 @@ export function DashboardHome() {
               // Show native notification if allowed
               if (Notification.permission === 'granted') {
                 newAppointments.forEach((apt: Appointment) => {
-                   new Notification('Novo agendamento recebido!', {
-                     body: `${apt.clientName} agendou um novo horário.`,
-                     icon: '/favicon.ico'
-                   });
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(registration => {
+                      registration.showNotification('Novo agendamento recebido!', {
+                        body: `${apt.clientName} agendou um novo horário.`,
+                        icon: '/pwa-192x192.png',
+                        vibrate: [200, 100, 200]
+                      } as any);
+                    }).catch(err => {
+                       new Notification('Novo agendamento recebido!', {
+                         body: `${apt.clientName} agendou um novo horário.`,
+                         icon: '/pwa-192x192.png'
+                       });
+                    });
+                  } else {
+                     new Notification('Novo agendamento recebido!', {
+                       body: `${apt.clientName} agendou um novo horário.`,
+                       icon: '/pwa-192x192.png'
+                     });
+                  }
                 });
               } else {
                 newAppointments.forEach((apt: Appointment) => {
@@ -155,7 +171,17 @@ export function DashboardHome() {
       fetchAppointments(true);
     }, 15000);
     
-    return () => clearInterval(interval);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAppointments(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentUser]);
 
   const handleSaveService = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -736,6 +762,12 @@ export function DashboardHome() {
                </h2>
                
                <div className="flex gap-2">
+                 {notificationPerm !== 'granted' && (
+                   <Button onClick={() => Notification.requestPermission().then(p => setNotificationPerm(p))} variant="outline" className="border-amber-500/50 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 h-9 px-3 shrink-0">
+                     <Bell className="w-4 h-4 sm:mr-2" />
+                     <span className="hidden sm:inline">Ativar Notificações</span>
+                   </Button>
+                 )}
                  <Input 
                    placeholder="Filtrar por nome..." 
                    value={filterName}
