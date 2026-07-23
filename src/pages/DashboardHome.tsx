@@ -523,19 +523,19 @@ export function DashboardHome() {
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Visão Geral</h1>
           <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           {currentSlug && (
-             <Button className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
+             <Button className="w-full sm:w-auto bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
                <Plus className="w-4 h-4 mr-2" />
                Agendar Agora
              </Button>
           )}
-          <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
+          <Button variant="outline" className="w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
             <RefreshCcw className="w-4 h-4 mr-2" />
             Sincronizar
           </Button>
           {currentSlug && (
-             <Button variant="outline" className="bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => {
+             <Button variant="outline" className="w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);
                 toast.success("Link copiado!");
              }}>
@@ -857,7 +857,7 @@ export function DashboardHome() {
                       </div>
 
                       <div className="flex flex-col gap-2 mt-4">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className={`grid gap-2 ${(apt.status === 'cancelled' || apt.status === 'Cancelado' || apt.status === 'completed' || apt.status === 'Concluído') ? 'grid-cols-1' : 'grid-cols-2'}`}>
                           <Button 
                             size="sm" 
                             variant="outline"
