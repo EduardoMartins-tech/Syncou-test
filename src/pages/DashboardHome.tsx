@@ -561,24 +561,26 @@ export function DashboardHome() {
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Visão Geral</h1>
           <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto">
           {currentSlug && (
-             <Button className="w-full sm:w-auto bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
+             <Button className="col-span-2 sm:col-span-1 w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
                <Plus className="w-4 h-4 mr-2" />
                Agendar Agora
              </Button>
           )}
-          <Button variant="outline" className="w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
-            <RefreshCcw className="w-4 h-4 mr-2" />
-            Sincronizar
+          <Button variant="outline" className="col-span-1 w-full bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white px-2" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
+            <RefreshCcw className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Sincronizar</span>
+            <span className="sm:hidden ml-1">Sincronizar</span>
           </Button>
           {currentSlug && (
-             <Button variant="outline" className="w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white" onClick={() => {
+             <Button variant="outline" className="col-span-1 w-full bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white px-2" onClick={() => {
                 navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);
                 notifySuccess("Link copiado!");
              }}>
-               <ExternalLink className="w-4 h-4 mr-2" />
-               Copiar
+               <ExternalLink className="w-4 h-4 sm:mr-2" />
+               <span className="hidden sm:inline">Copiar Link</span>
+               <span className="sm:hidden ml-1">Copiar</span>
              </Button>
           )}
         </div>
@@ -588,21 +590,21 @@ export function DashboardHome() {
       <div className="flex space-x-2 rounded-xl bg-[#130E20] p-1 border border-[#2D214F] w-full lg:w-fit mb-6 overflow-x-auto hide-scrollbar">
         <button 
           onClick={() => setActiveTab('agendamentos')}
-          className={`flex-1 min-w-[140px] rounded-lg py-2.5 text-sm font-medium transition-colors ${activeTab === 'agendamentos' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
+          className={`flex-1 rounded-lg py-2.5 px-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'agendamentos' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
         >
           <CalendarIcon className="w-4 h-4 inline-block mr-2 mb-0.5" />
           Agendamentos
         </button>
         <button 
           onClick={() => setActiveTab('servicos')}
-          className={`flex-1 min-w-[140px] rounded-lg py-2.5 text-sm font-medium transition-colors ${activeTab === 'servicos' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
+          className={`flex-1 rounded-lg py-2.5 px-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'servicos' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
         >
           <span className="w-4 h-4 inline-flex items-center justify-center rounded-sm bg-[#8B5CF6]/20 text-violet-400 text-[10px] font-bold mr-2 mb-0.5">S</span>
           Serviços
         </button>
         <button 
           onClick={() => setActiveTab('analytics')}
-          className={`flex-1 min-w-[140px] rounded-lg py-2.5 text-sm font-medium transition-colors ${activeTab === 'analytics' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
+          className={`flex-1 rounded-lg py-2.5 px-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'analytics' ? 'bg-[#2D214F] text-white shadow' : 'text-[#9B8FC0] hover:bg-[#1A1333] hover:text-white'}`}
         >
           <TrendingUp className="w-4 h-4 inline-block mr-2 mb-0.5" />
           Analytics
@@ -798,14 +800,14 @@ export function DashboardHome() {
              </div>
              
              {/* Tabs para Filtro */}
-             <div className="flex flex-wrap gap-2 pb-2">
+             <div className="flex overflow-x-auto hide-scrollbar gap-2 pb-2 snap-x">
                {['Todos', 'Pendente', 'Confirmado', 'Concluído', 'Cancelado'].map(status => (
                  <button
                    key={status}
                    onClick={() => setFilterStatus(status)}
-                   className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 ${
+                   className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 snap-start ${
                      filterStatus === status 
-                       ? 'bg-violet-600 text-white shadow-sm' 
+                       ? 'bg-[#2D214F] text-white shadow-sm border border-[#4B3B7A]' 
                        : 'bg-[#130E20] border border-[#2D214F] text-[#9B8FC0] hover:text-white hover:border-[#4B3B7A]'
                    }`}
                  >
