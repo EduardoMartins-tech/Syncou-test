@@ -754,18 +754,34 @@ export function DashboardHome() {
         <div className="space-y-6 animate-in fade-in duration-300 slide-in-from-bottom-2 w-full lg:max-w-4xl">
         {/* Appointments Section */}
            <div className="flex flex-col gap-4">
-             <div className="flex items-center justify-between">
+             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                <h2 className="text-xl font-bold text-white flex items-center gap-2">
                  <CalendarIcon className="w-5 h-5 text-violet-400" />
                  Agendamentos
                  <span className="bg-[#1A1333] text-[#E2D9F3] text-xs px-2 py-1 rounded-full">{filteredAppointments.length}</span>
                </h2>
                
-               <div className="flex gap-2">
+               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                  {notificationPerm !== 'granted' && (
-                   <Button onClick={() => Notification.requestPermission().then(p => setNotificationPerm(p))} variant="outline" className="border-amber-500/50 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 h-9 px-3 shrink-0">
-                     <Bell className="w-4 h-4 sm:mr-2" />
-                     <span className="hidden sm:inline">Ativar Notificações</span>
+                   <Button 
+                     onClick={async () => {
+                       if (!('Notification' in window)) {
+                         notifyError('Navegador não suporta notificações.');
+                         return;
+                       }
+                       if (Notification.permission === 'denied') {
+                         notifyError('Notificações bloqueadas. Libere nas permissões do site/navegador para receber alertas.');
+                         return;
+                       }
+                       const p = await Notification.requestPermission();
+                       setNotificationPerm(p);
+                       if (p === 'granted') notifySuccess('Notificações ativadas!');
+                     }} 
+                     variant="outline" 
+                     className="border-amber-500/50 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 h-9 px-3 shrink-0"
+                   >
+                     <Bell className="w-4 h-4 mr-2" />
+                     <span>Ativar Notificações</span>
                    </Button>
                  )}
                  <Input 

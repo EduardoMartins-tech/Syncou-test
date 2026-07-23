@@ -14,6 +14,21 @@ import { NotFound } from './pages/NotFound';
 import { TermsPage } from './pages/TermsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
+
+import { registerSW } from 'virtual:pwa-register';
+
+if ('serviceWorker' in navigator) {
+  registerSW({
+    immediate: true,
+    onRegistered(r) {
+      console.log('SW Registered: ', r);
+    },
+    onRegisterError(error) {
+      console.log('SW registration error', error);
+    }
+  });
+}
+
 import { Toaster, toast } from 'sonner';
 
 // Global fetch interceptor for Rate Limiting (429 Too Many Requests)
