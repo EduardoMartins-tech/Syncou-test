@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useNotification } from '../hooks/useNotification';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { syncWithGoogleCalendar } from '../lib/calendar';
@@ -45,6 +46,7 @@ interface Appointment {
 export function DashboardHome() {
   const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
   const { currentUser, getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
   // removed googleAccessToken as this is a local build now, but keeping var for stub
   const googleAccessToken = null;
   const signInWithGoogle = () => {};
@@ -566,7 +568,7 @@ export function DashboardHome() {
               <p className="text-amber-400/80 text-sm mt-0.5">Conecte sua conta do Google para sincronizar seus agendamentos automaticamente.</p>
             </div>
           </div>
-          <Button onClick={() => window.location.href = '/app/settings'} variant="outline" className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400">
+          <Button onClick={() => navigate('/dashboard/settings#google-calendar')} variant="outline" className="w-full sm:w-auto bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400">
             Conectar agora
           </Button>
         </motion.div>

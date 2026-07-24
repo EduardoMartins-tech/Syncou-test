@@ -44,9 +44,23 @@ const DAYS_OF_WEEK = [
 
 type SettingsForm = z.infer<typeof slugSchema>;
 
+import { useLocation } from 'react-router-dom';
 export function DashboardSettings() {
+  const location = useLocation();
   const { currentUser, getAuthHeaders, updateUser } = useAuth();
   const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
+
+  useEffect(() => {
+    if (location.hash === '#google-calendar') {
+      setTimeout(() => {
+        const el = document.getElementById('google-calendar');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500); // Wait a bit for layout to settle
+    }
+  }, [location.hash]);
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [currentSlug, setCurrentSlug] = useState('');
@@ -745,7 +759,7 @@ export function DashboardSettings() {
         </Card>
 
         {/* INTEGRATIONS SETTINGS */}
-        <Card className="bg-[#130E20] border-[#2D214F] shadow-sm mt-8">
+        <Card id="google-calendar" className="bg-[#130E20] border-[#2D214F] shadow-sm mt-8 scroll-mt-24">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl font-bold text-white">
                <CalendarIcon className="w-5 h-5 text-violet-400" />
