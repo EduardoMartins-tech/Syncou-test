@@ -1,4 +1,6 @@
-import React from 'react';
+import fs from 'fs';
+const file = 'src/components/Logo.tsx';
+const code = `import React from 'react';
 
 interface LogoProps {
   className?: string;
@@ -7,7 +9,7 @@ interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8" }) => {
   return (
     <svg
-      className={`${className} text-purple-500 transition-transform duration-300 hover:scale-110 active:scale-95`}
+      className={\`\${className} text-purple-500 transition-transform duration-300 hover:scale-110 active:scale-95\`}
       viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -27,3 +29,5 @@ export const Logo: React.FC<LogoProps> = ({ className = "w-8 h-8" }) => {
     </svg>
   );
 };
+`;
+fs.writeFileSync(file, code);

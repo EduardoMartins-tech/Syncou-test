@@ -358,12 +358,24 @@ export function DashboardSettings() {
               Você tem alterações não salvas. Se você sair agora, suas alterações serão perdidas. Deseja sair mesmo assim?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex sm:justify-end gap-2 mt-4">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
             <Button variant="ghost" onClick={() => blocker.state === "blocked" && blocker.reset()} className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]">
               Continuar editando
             </Button>
             <Button variant="destructive" onClick={() => blocker.state === "blocked" && blocker.proceed()} className="bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none">
               Sair sem salvar
+            </Button>
+            <Button 
+              variant="default" 
+              onClick={() => {
+                handleSubmit(async (data) => {
+                  await onSubmit(data);
+                  if (blocker.state === "blocked") blocker.proceed();
+                })();
+              }} 
+              className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white"
+            >
+              Salvar alterações
             </Button>
           </DialogFooter>
         </DialogContent>
