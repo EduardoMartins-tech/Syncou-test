@@ -561,28 +561,30 @@ export function DashboardHome() {
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Visão Geral</h1>
           <p className="text-[#9B8FC0]">Acompanhe seus agendamentos e gerencie seus serviços.</p>
         </div>
-        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="flex flex-row flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto justify-end">
           {currentSlug && (
-             <Button className="col-span-2 sm:col-span-1 w-full sm:w-auto bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
+             <Button className="w-full sm:w-auto bg-[#8B5CF6] hover:bg-[#7C3AED] text-white shadow-lg shadow-violet-500/20" onClick={() => window.open(`/p/${currentSlug}`, '_blank')}>
                <Plus className="w-4 h-4 mr-2" />
                Agendar Agora
              </Button>
           )}
-          <Button variant="outline" className="col-span-1 w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white px-2 sm:px-4" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
-            <RefreshCcw className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Sincronizar</span>
-            <span className="sm:hidden ml-1">Sincronizar</span>
-          </Button>
-          {currentSlug && (
-             <Button variant="outline" className="col-span-1 w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white px-2 sm:px-4" onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);
-                notifySuccess("Link copiado!");
-             }}>
-               <ExternalLink className="w-4 h-4 sm:mr-2" />
-               <span className="hidden sm:inline">Copiar</span>
-               <span className="sm:hidden ml-1">Copiar</span>
-             </Button>
-          )}
+          <div className="flex flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white px-2 sm:px-4" onClick={() => handleSyncCalendar(false)} title="Sincroniza seus agendamentos para o seu Google Calendar. Útil caso algum agendamento tenha falhado.">
+              <RefreshCcw className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Sincronizar</span>
+              <span className="sm:hidden ml-1">Sincronizar</span>
+            </Button>
+            {currentSlug && (
+               <Button variant="outline" className="flex-1 sm:flex-none w-full sm:w-auto bg-[#130E20] border-[#2D214F] text-[#E2D9F3] hover:bg-[#1A1333] hover:text-white px-2 sm:px-4" onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/p/${currentSlug}`);
+                  notifySuccess("Link copiado!");
+               }}>
+                 <ExternalLink className="w-4 h-4 sm:mr-2" />
+                 <span className="hidden sm:inline">Copiar</span>
+                 <span className="sm:hidden ml-1">Copiar</span>
+               </Button>
+            )}
+          </div>
         </div>
       </motion.div>
 

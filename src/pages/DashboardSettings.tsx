@@ -1,4 +1,5 @@
 import { useState, useEffect, ChangeEvent } from 'react';
+import { useBlocker } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Copy, ExternalLink, RefreshCw, Upload, User, Plus, Trash2, CalendarX2, Calendar as CalendarIcon, CheckCircle2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { googleSignInForCalendar } from '../lib/firebase';
@@ -129,7 +131,7 @@ export function DashboardSettings() {
     }
   };
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<SettingsForm>({
+  const { register, handleSubmit, formState: { errors, isDirty }, reset, setValue, watch } = useForm<SettingsForm>({
     resolver: zodResolver(slugSchema),
     defaultValues: {
       slug: '',
@@ -147,6 +149,25 @@ export function DashboardSettings() {
   const watchedDisplayName = watch('displayName');
   const watchedBio = watch('bio');
   const watchedSlug = watch('slug');
+
+  // Prevent tab close if dirty
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Prevent navigation if dirty
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -265,6 +286,7 @@ export function DashboardSettings() {
 
       await updateUser(payload);
       setCurrentSlug(data.slug);
+      reset(data);
       notifySuccess("Perfil atualizado com sucesso!");
     } catch (err: any) {
       console.error("Erro real ao salvar:", err);
@@ -328,6 +350,25 @@ export function DashboardSettings() {
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in duration-500 overflow-hidden">
+      <Dialog open={blocker.state === "blocked"} onOpenChange={(open) => { if (!open && blocker.state === "blocked") blocker.reset(); }}>
+        <DialogContent className="bg-[#130E20] border-[#2D214F] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sair sem salvar?</DialogTitle>
+            <DialogDescription className="text-[#9B8FC0]">
+              Você tem alterações não salvas. Se você sair agora, suas alterações serão perdidas. Deseja sair mesmo assim?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex sm:justify-end gap-2 mt-4">
+            <Button variant="ghost" onClick={() => blocker.state === "blocked" && blocker.reset()} className="text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]">
+              Continuar editando
+            </Button>
+            <Button variant="destructive" onClick={() => blocker.state === "blocked" && blocker.proceed()} className="bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-none">
+              Sair sem salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
