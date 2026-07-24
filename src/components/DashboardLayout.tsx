@@ -3,6 +3,7 @@ import { Outlet, useNavigate, Link, useLocation, Navigate } from 'react-router-d
 import { Button } from '@/components/ui/button';
 import { LogOut, Settings, LayoutDashboard, Calendar, Bell, User, Menu, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { motion, AnimatePresence } from 'motion/react';
 import { Logo } from './Logo';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -97,46 +98,54 @@ export function DashboardLayout() {
         </header>
 
         {/* Mobile Menu Overlay */}
-        {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-10 bg-[#0B0914] pt-20 px-6 flex flex-col h-screen overflow-y-auto">
-            <div className="flex-1 flex flex-col space-y-4 pb-20">
-              <nav className="space-y-2 mt-4">
-                {navItems.map((item) => (
-                  <Link key={item.path} to={item.path} className="block">
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full justify-start text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]/50 font-medium h-12 text-lg ${location.pathname === item.path ? 'bg-[#2D214F] text-white shadow-sm' : ''}`}
-                    >
-                      <item.icon className="mr-4 w-5 h-5" strokeWidth={2} />
-                      {item.name}
-                    </Button>
-                  </Link>
-                ))}
-              </nav>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="md:hidden fixed inset-0 z-10 bg-[#0B0914] pt-20 px-6 flex flex-col h-screen overflow-y-auto"
+            >
+              <div className="flex-1 flex flex-col space-y-4 pb-20">
+                <nav className="space-y-2 mt-4">
+                  {navItems.map((item) => (
+                    <Link key={item.path} to={item.path} className="block">
+                      <Button 
+                        variant="ghost" 
+                        className={`w-full justify-start text-[#9B8FC0] hover:text-white hover:bg-[#2D214F]/50 font-medium h-12 text-lg ${location.pathname === item.path ? 'bg-[#2D214F] text-white shadow-sm' : ''}`}
+                      >
+                        <item.icon className="mr-4 w-5 h-5" strokeWidth={2} />
+                        {item.name}
+                      </Button>
+                    </Link>
+                  ))}
+                </nav>
 
-              <div className="mt-auto pt-8 border-t border-[#2D214F]">
-                <div className="flex items-center gap-3 mb-6 bg-[#130E20] p-4 rounded-xl border border-[#2D214F]">
-                  <Avatar className="w-12 h-12 ring-2 ring-[#2D214F] shadow-sm">
-                    <AvatarImage src={currentUser?.avatarUrl || ''} />
-                    <AvatarFallback className="bg-[#1A1333] text-white font-medium">{currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div className="overflow-hidden">
-                    <p className="font-medium text-white truncate">{currentUser?.displayName}</p>
-                    <p className="text-sm text-[#9B8FC0] truncate">{currentUser?.email}</p>
+                <div className="mt-auto pt-8 border-t border-[#2D214F]">
+                  <div className="flex items-center gap-3 mb-6 bg-[#130E20] p-4 rounded-xl border border-[#2D214F]">
+                    <Avatar className="w-12 h-12 ring-2 ring-[#2D214F] shadow-sm">
+                      <AvatarImage src={currentUser?.avatarUrl || ''} />
+                      <AvatarFallback className="bg-[#1A1333] text-white font-medium">{currentUser?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="overflow-hidden">
+                      <p className="font-medium text-white truncate">{currentUser?.displayName}</p>
+                      <p className="text-sm text-[#9B8FC0] truncate">{currentUser?.email}</p>
+                    </div>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start border-[#2D214F] text-[#E2D9F3] hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 font-medium h-12" 
+                    onClick={logout}
+                  >
+                    <LogOut className="mr-3 w-5 h-5" strokeWidth={2} />
+                    Sair
+                  </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start border-[#2D214F] text-[#E2D9F3] hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 font-medium h-12" 
-                  onClick={logout}
-                >
-                  <LogOut className="mr-3 w-5 h-5" strokeWidth={2} />
-                  Sair
-                </Button>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="max-w-5xl mx-auto w-full flex-1">
           <Outlet />
