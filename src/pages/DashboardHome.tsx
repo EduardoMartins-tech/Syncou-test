@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { syncWithGoogleCalendar } from '../lib/calendar';
+import { messaging } from '../lib/firebase';
+import { getToken } from 'firebase/messaging';
 import { googleSignInForCalendar } from '../lib/firebase';
 
 interface Service {
@@ -65,6 +67,45 @@ export function DashboardHome() {
   const [filterStatus, setFilterStatus] = useState<string>('Todos');
   const [filterName, setFilterName] = useState<string>('');
   const [notificationPerm, setNotificationPerm] = useState<string>(Notification.permission);
+
+  const registerFcmToken = async () => {
+    try {
+      const msg = await messaging();
+      if (!msg) return;
+      
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      if (!vapidKey) {
+        console.warn('VITE_FIREBASE_VAPID_KEY is not set');
+        return;
+      }
+      
+      const currentToken = await getToken(msg, { vapidKey });
+      if (currentToken) {
+        // Send to backend
+        const tokenStr = localStorage.getItem('token');
+        await fetch('/api/user/fcm-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenStr}`
+          },
+          body: JSON.stringify({ token: currentToken })
+        });
+        console.log('FCM token registered.');
+      } else {
+        console.log('No registration token available. Request permission to generate one.');
+      }
+    } catch (err) {
+      console.log('An error occurred while retrieving token. ', err);
+    }
+  };
+
+  useEffect(() => {
+    if (notificationPerm === 'granted') {
+      registerFcmToken();
+    }
+  }, [notificationPerm]);
+
 
   // Cancel Modal
   const [cancelingApt, setCancelingApt] = useState<Appointment | null>(null);

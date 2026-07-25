@@ -11,6 +11,7 @@ import { Clock, Plus, Check, ChevronLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, isSameDay, addMinutes, isAfter, startOfDay, addDays, getHours, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { useNotification } from '../hooks/useNotification';
 
 interface Provider {
@@ -40,6 +41,7 @@ interface Service {
 export function ProviderPage() {
   const { slug } = useParams();
   const { notifySuccess, notifyError, notifyLoading, dismiss, notifyInfo } = useNotification();
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [provider, setProvider] = useState<Provider | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,6 +216,14 @@ export function ProviderPage() {
       const startAt = setMinutes(setHours(selectedDate, hours), minutes).getTime();
       const endAt = startAt + (totalDurationWithBuffer * 60000);
 
+      if (!executeRecaptcha) {
+        notifyError('ReCAPTCHA não está pronto. Tente novamente em instantes.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const captchaToken = await executeRecaptcha('booking');
+      
       const bookingPayload = {
          providerId: provider.id,
          clientName,
@@ -227,7 +237,8 @@ export function ProviderPage() {
          bookingSource: 'public_link',
          status: 'Pendente',
          startAt,
-         endAt
+         endAt,
+         captchaToken
       };
       
       const res = await fetch(`/api/provider/${provider.slug}/book`, {

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
+import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -34,4 +35,12 @@ export const googleSignInForCalendar = async (): Promise<{ user: User; accessTok
     console.error('Sign in error:', error);
     throw error;
   }
+};
+
+export const messaging = async () => {
+  const supported = await isSupported();
+  if (supported) {
+    return getMessaging(app);
+  }
+  return null;
 };

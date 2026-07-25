@@ -8,6 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import admin from 'firebase-admin';
 import nodemailer from 'nodemailer';
 import cron from 'node-cron';
 import { RateLimiter } from './server/rateLimiter';
@@ -44,7 +45,35 @@ setupEmail().catch(console.error);
 
 function setupCronJobs() {
   // Run daily at 08:00
+
+  // Expire pending appointments older than 24h
+  cron.schedule('0 * * * *', async () => {
+    if (!process.env.DATABASE_URL && !process.env.PGHOST) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('CRITICAL ERROR: DATABASE_URL is missing in production. Cannot run pending appointments expiration cron job!');
+      }
+      return;
+    }
+    console.log('Running pending appointments expiration cron job...');
+    try {
+      await pool.query(
+        `UPDATE appointments 
+         SET status = 'Cancelado', cancel_reason = 'Expirado (mais de 24h pendente)'
+         WHERE status = 'Pendente' 
+         AND created_at < NOW() - INTERVAL '24 hours'`
+      );
+    } catch (e) {
+      console.error('Error expiring appointments:', e);
+    }
+  });
+
   cron.schedule('0 8 * * *', async () => {
+    if (!process.env.DATABASE_URL && !process.env.PGHOST) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('CRITICAL ERROR: DATABASE_URL is missing in production. Cannot run daily reminder cron job!');
+      }
+      return;
+    }
     console.log('Running daily reminder cron job...');
     try {
       if (!transporter) return;
@@ -275,10 +304,30 @@ async function runMigrations() {
     `);
     await client.query(`
       ALTER TABLE appointments ADD COLUMN IF NOT EXISTS google_event_id VARCHAR(255);
+      
+      -- Corrige registros antigos com status NULL para evitar falhas silenciosas na validação de overlap
+      UPDATE appointments SET status = 'Pendente' WHERE status IS NULL;
+      
+      CREATE EXTENSION IF NOT EXISTS btree_gist;
+      
+      -- Remove and re-add constraint to ensure it's up to date
+      ALTER TABLE appointments DROP CONSTRAINT IF EXISTS no_overlapping_appointments;
+      ALTER TABLE appointments ADD CONSTRAINT no_overlapping_appointments EXCLUDE USING gist (
+        provider_id WITH =,
+        int8range(start_at, end_at) WITH &&
+      ) WHERE (COALESCE(status, 'Pendente') IN ('Pendente', 'Confirmado', 'scheduled', 'confirmed', 'pendente', 'confirmado'));
+
       CREATE TABLE IF NOT EXISTS otp_codes (
         email VARCHAR(255) PRIMARY KEY,
         code VARCHAR(10) NOT NULL,
         expires_at TIMESTAMP NOT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS fcm_tokens (
+        id SERIAL PRIMARY KEY,
+        provider_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -314,7 +363,42 @@ function generateId() {
   return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
 }
 
+
+let firebaseAdminApp: admin.app.App | null = null;
+function getFirebaseAdmin() {
+  if (firebaseAdminApp) return firebaseAdminApp;
+  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+  if (!serviceAccountBase64) return null;
+  try {
+    const serviceAccount = JSON.parse(Buffer.from(serviceAccountBase64, 'base64').toString('utf8'));
+    firebaseAdminApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    return firebaseAdminApp;
+  } catch (e) {
+    console.error('Failed to init Firebase Admin:', e);
+    return null;
+  }
+}
+
 // ====== API ROUTES ====== //
+
+app.post('/api/user/fcm-token', authenticateToken, async (req: any, res: any) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Token is required' });
+    
+    await pool.query(
+      'INSERT INTO fcm_tokens (provider_id, token) VALUES ($1, $2) ON CONFLICT (token) DO UPDATE SET provider_id = EXCLUDED.provider_id',
+      [req.user.id, token]
+    );
+    res.json({ success: true });
+  } catch (e: any) {
+    console.error('Error saving FCM token:', e);
+    res.status(500).json({ error: 'Error saving token' });
+  }
+});
+
 
 app.post('/api/auth/send-otp', otpLimiter.middleware(), async (req, res) => {
   try {
@@ -850,7 +934,7 @@ app.put('/api/appointments/:id', authenticateToken, async (req: any, res) => {
            `SELECT id FROM appointments 
             WHERE provider_id = $1 
             AND id != $2
-            AND status NOT IN ('cancelled', 'Cancelado')
+            AND COALESCE(status, 'Pendente') NOT IN ('cancelled', 'Cancelado')
             AND start_at < $3 
             AND end_at > $4`,
            [req.user.id, req.params.id, Number(endAt), Number(startAt)]
@@ -1040,7 +1124,7 @@ app.get('/api/provider/:slug/appointments', async (req, res) => {
      if (!startAt || !endAt) return res.json([]);
 
      const resultApts = await pool.query(
-       'SELECT start_at as "startAt", end_at as "endAt", status FROM appointments WHERE provider_id = $1 AND start_at >= $2 AND start_at <= $3 AND status NOT IN ($4, $5)',
+       'SELECT start_at as "startAt", end_at as "endAt", status FROM appointments WHERE provider_id = $1 AND start_at >= $2 AND start_at <= $3 AND COALESCE(status, \'Pendente\') NOT IN ($4, $5)',
        [user.id, Number(startAt), Number(endAt), 'cancelled', 'Cancelado']
      );
      
@@ -1052,7 +1136,48 @@ app.get('/api/provider/:slug/appointments', async (req, res) => {
 
 app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, res) => {
   try {
-    const { providerId, clientName, clientWhatsApp, clientPhone, clientEmail, services, totalPrice, totalDuration, bufferTime, bookingSource, status, startAt, endAt } = req.body;
+    const { providerId, clientName, clientWhatsApp, clientPhone, clientEmail, services, totalPrice, totalDuration, bufferTime, bookingSource, status, startAt, endAt, captchaToken } = req.body;
+
+    // 3) Valida Captcha
+    if (!captchaToken) {
+      return res.status(400).json({ error: 'Falha na verificação de segurança (Captcha ausente).' });
+    }
+    
+    try {
+      const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+      if (!recaptchaSecret) {
+        console.error('CRITICAL ERROR: RECAPTCHA_SECRET_KEY is not defined. Blocking appointment creation.');
+        return res.status(500).json({ error: 'Erro de configuração do servidor (Captcha ausente).' });
+      }
+      
+      const verifyRes = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          secret: recaptchaSecret,
+          response: captchaToken
+        }).toString()
+      });
+      
+      const verifyData = await verifyRes.json();
+      if (!verifyData.success) {
+        console.error('Captcha validation failed:', verifyData);
+        return res.status(400).json({ error: 'Falha na verificação de segurança (Captcha inválido).' });
+      }
+    } catch (e) {
+      console.error('Error verifying captcha:', e);
+      return res.status(500).json({ error: 'Erro de conectividade ao validar captcha. Tente novamente mais tarde.' });
+    }
+
+    // 2) Valida se o telefone já tem 2+ agendamentos pendentes
+    const pendingByPhone = await pool.query(
+      `SELECT count(*) FROM appointments WHERE provider_id = $1 AND client_phone = $2 AND COALESCE(status, 'Pendente') = 'Pendente'`,
+      [providerId, clientPhone]
+    );
+    if (parseInt(pendingByPhone.rows[0].count) >= 2) {
+       return res.status(400).json({ error: 'Você já possui o limite máximo de agendamentos pendentes para este número.' });
+    }
+
     
     // Validate working hours
     const providerUser = await pool.query('SELECT working_hours_start as "workingHoursStart", working_hours_end as "workingHoursEnd", working_days as "workingDays", work_on_holidays as "workOnHolidays", schedule_overrides as "scheduleOverrides", google_access_token as "googleAccessToken", plan FROM users WHERE id = $1', [providerId]);
@@ -1137,7 +1262,7 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
     const overlapCheck = await pool.query(
       `SELECT id FROM appointments 
        WHERE provider_id = $1 
-       AND status NOT IN ('cancelled', 'Cancelado')
+       AND COALESCE(status, 'Pendente') NOT IN ('cancelled', 'Cancelado')
        AND start_at < $2 
        AND end_at > $3`,
       [providerId, Number(endAt), Number(startAt)]
@@ -1149,10 +1274,17 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
 
     const id = generateId();
     
-    await pool.query(
-      'INSERT INTO appointments (id, provider_id, client_name, client_whatsapp, client_phone, client_email, services, total_price, total_duration, buffer_time, booking_source, status, start_at, end_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
-      [id, providerId, clientName, clientWhatsApp, clientPhone, clientEmail, JSON.stringify(services || []), totalPrice, totalDuration, bufferTime || 0, bookingSource, status || 'Pendente', startAt, endAt]
-    );
+    try {
+      await pool.query(
+        'INSERT INTO appointments (id, provider_id, client_name, client_whatsapp, client_phone, client_email, services, total_price, total_duration, buffer_time, booking_source, status, start_at, end_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
+        [id, providerId, clientName, clientWhatsApp, clientPhone, clientEmail, JSON.stringify(services || []), totalPrice, totalDuration, bufferTime || 0, bookingSource, status || 'Pendente', startAt, endAt]
+      );
+    } catch (insertError: any) {
+      if (insertError.code === '23P01') {
+        return res.status(409).json({ error: 'Este horário acabou de ser reservado, escolha outro horário disponível' });
+      }
+      throw insertError;
+    }
 
     // Sync to Google Calendar if provider has connected it
     try {
@@ -1194,6 +1326,27 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
        console.error("Error creating Google Calendar event:", gcalErr);
     }
       
+    // Send FCM push notification to provider
+    try {
+      const fcmTokensRes = await pool.query('SELECT token FROM fcm_tokens WHERE provider_id = $1', [providerId]);
+      const tokens = fcmTokensRes.rows.map((r: any) => r.token);
+      
+      const adminApp = getFirebaseAdmin();
+      if (adminApp && tokens.length > 0) {
+        const message = {
+          notification: {
+            title: 'Novo agendamento recebido!',
+            body: `${clientName} agendou para ${new Date(Number(startAt)).toLocaleString('pt-BR')}`
+          },
+          tokens: tokens,
+        };
+        await adminApp.messaging().sendEachForMulticast(message);
+        console.log('FCM push sent to provider.');
+      }
+    } catch (pushErr) {
+       console.error("Error sending FCM push:", pushErr);
+    }
+    
     res.json({ success: true, appointmentId: id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

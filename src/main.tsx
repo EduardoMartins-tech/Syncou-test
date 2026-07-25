@@ -13,6 +13,7 @@ import { DashboardCalendar } from './pages/DashboardCalendar';
 import { NotFound } from './pages/NotFound';
 import { TermsPage } from './pages/TermsPage';
 import { AuthProvider } from './contexts/AuthContext';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import './index.css';
 
 import { registerSW } from 'virtual:pwa-register';
@@ -126,11 +127,15 @@ const router = createBrowserRouter([
   },
 ]);
 
+const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
-      <Toaster />
+      <GoogleReCaptchaProvider reCaptchaKey={siteKey}>
+        <RouterProvider router={router} />
+        <Toaster />
+      </GoogleReCaptchaProvider>
     </AuthProvider>
   </StrictMode>,
 );
