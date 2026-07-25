@@ -106,6 +106,23 @@ export function DashboardHome() {
     }
   }, [notificationPerm]);
 
+  useEffect(() => {
+    const setupForegroundListener = async () => {
+      const msg = await messaging();
+      if (msg) {
+        import('firebase/messaging').then(({ onMessage }) => {
+          onMessage(msg, (payload) => {
+            console.log('Foreground message received: ', payload);
+            const title = payload.data?.title || payload.notification?.title || 'Notificação';
+            const body = payload.data?.body || payload.notification?.body || '';
+            toast(title, { description: body });
+          });
+        });
+      }
+    };
+    setupForegroundListener();
+  }, []);
+
 
   // Cancel Modal
   const [cancelingApt, setCancelingApt] = useState<Appointment | null>(null);

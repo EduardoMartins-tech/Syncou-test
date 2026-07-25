@@ -1334,7 +1334,7 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
       const adminApp = getFirebaseAdmin();
       if (adminApp && tokens.length > 0) {
         const message = {
-          notification: {
+          data: {
             title: 'Novo agendamento recebido!',
             body: `${clientName} agendou para ${new Date(Number(startAt)).toLocaleString('pt-BR')}`
           },

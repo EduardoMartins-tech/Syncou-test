@@ -19,11 +19,14 @@ const messaging = getMessaging(app);
 
 onBackgroundMessage(messaging, (payload) => {
   console.log('[sw.ts] Received background message ', payload);
-  const notificationTitle = payload.notification?.title || 'Notificação';
-  const notificationOptions = {
-    body: payload.notification?.body,
+  
+  // Use payload.data if available (pure data payload for reliable background delivery),
+  // fallback to payload.notification just in case.
+  const title = payload.data?.title || payload.notification?.title || 'Notificação';
+  const options = {
+    body: payload.data?.body || payload.notification?.body,
     icon: '/pwa-192x192.png',
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(title, options);
 });
