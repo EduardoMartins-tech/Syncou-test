@@ -8,7 +8,8 @@ import { createServer as createViteServer } from 'vite';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import admin from 'firebase-admin';
+import { getMessaging } from 'firebase-admin/messaging';
+import { initializeApp, cert } from 'firebase-admin/app';
 import nodemailer from 'nodemailer';
 import cron from 'node-cron';
 import { RateLimiter } from './server/rateLimiter';
@@ -364,21 +365,40 @@ function generateId() {
 }
 
 
-let firebaseAdminApp: admin.app.App | null = null;
-function getFirebaseAdmin() {
-  if (firebaseAdminApp) return firebaseAdminApp;
+let firebaseAdminApp: any = null;
+
+// Initialize and validate Firebase Admin on boot
+function initFirebaseAdmin() {
   const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-  if (!serviceAccountBase64) return null;
-  try {
-    const serviceAccount = JSON.parse(Buffer.from(serviceAccountBase64, 'base64').toString('utf8'));
-    firebaseAdminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    return firebaseAdminApp;
-  } catch (e) {
-    console.error('Failed to init Firebase Admin:', e);
+  
+  if (!serviceAccountBase64) {
+    console.warn("⚠️ AVISO: A variável de ambiente FIREBASE_SERVICE_ACCOUNT_BASE64 não está configurada. O envio de notificações push não funcionará.");
     return null;
   }
+  
+  try {
+    const decoded = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+    if (!decoded || !decoded.includes('project_id')) {
+      throw new Error("A base64 decodificada não parece ser um JSON válido de service account.");
+    }
+    const serviceAccount = JSON.parse(decoded);
+    
+    firebaseAdminApp = initializeApp({
+      credential: cert(serviceAccount)
+    });
+    console.log("✅ Firebase Admin inicializado com sucesso para o projeto:", serviceAccount.project_id);
+    return firebaseAdminApp;
+  } catch (e: any) {
+    console.error('❌ ERRO CRÍTICO ao inicializar Firebase Admin:', e.message);
+    return null;
+  }
+}
+
+// Call on boot
+initFirebaseAdmin();
+
+function getFirebaseAdmin() {
+  return firebaseAdminApp;
 }
 
 // ====== API ROUTES ====== //
@@ -1340,7 +1360,7 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
           },
           tokens: tokens,
         };
-        const pushRes = await adminApp.messaging().sendEachForMulticast(message);
+        const pushRes = await getMessaging(adminApp).sendEachForMulticast(message);
         console.log('FCM push response:', JSON.stringify(pushRes, null, 2));
         if (pushRes.failureCount > 0) {
            pushRes.responses.forEach((resp, idx) => {
