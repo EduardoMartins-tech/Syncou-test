@@ -1340,8 +1340,15 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
           },
           tokens: tokens,
         };
-        await adminApp.messaging().sendEachForMulticast(message);
-        console.log('FCM push sent to provider.');
+        const pushRes = await adminApp.messaging().sendEachForMulticast(message);
+        console.log('FCM push response:', JSON.stringify(pushRes, null, 2));
+        if (pushRes.failureCount > 0) {
+           pushRes.responses.forEach((resp, idx) => {
+              if (!resp.success) {
+                 console.error(`Failed to send to token ${tokens[idx]}: `, resp.error);
+              }
+           });
+        }
       }
     } catch (pushErr) {
        console.error("Error sending FCM push:", pushErr);

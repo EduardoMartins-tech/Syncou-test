@@ -79,7 +79,16 @@ export function DashboardHome() {
         return;
       }
       
-      const currentToken = await getToken(msg, { vapidKey });
+      let registration;
+      try {
+        registration = await navigator.serviceWorker.ready;
+      } catch (err) {
+        console.warn('Service worker not ready yet', err);
+      }
+      const currentToken = await getToken(msg, { 
+        vapidKey,
+        serviceWorkerRegistration: registration 
+      });
       if (currentToken) {
         // Send to backend
         const tokenStr = localStorage.getItem('token');
