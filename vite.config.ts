@@ -25,6 +25,7 @@ export default defineConfig(({mode}) => {
           theme_color: '#0f172a',
           background_color: '#020617',
           display: 'standalone',
+          gcm_sender_id: '103953800507',
           icons: [
             {
               src: '/pwa-192x192.png',
