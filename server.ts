@@ -142,14 +142,27 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://api.stripe.com", "https://maps.googleapis.com", "https://wa.me", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://www.googleapis.com", "https://www.google.com", "https://www.gstatic.com"],
+      connectSrc: [
+        "'self'", 
+        "https://api.stripe.com", 
+        "https://maps.googleapis.com", 
+        "https://wa.me", 
+        "https://identitytoolkit.googleapis.com", 
+        "https://securetoken.googleapis.com", 
+        "https://www.googleapis.com", 
+        "https://www.google.com", 
+        "https://www.gstatic.com",
+        "https://fcmregistrations.googleapis.com",
+        "https://fcm.googleapis.com",
+        "https://*.firebase.com"
+      ],
       frameSrc: ["'self'", "https://js.stripe.com", "https://accounts.google.com", "https://*.firebaseapp.com", "https://www.google.com", "https://www.gstatic.com"],
       mediaSrc: ["'self'", "https://assets.mixkit.co"],
     },
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
 }));
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
