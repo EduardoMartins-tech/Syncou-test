@@ -70,8 +70,12 @@ export function DashboardHome() {
 
   const registerFcmToken = async () => {
     try {
+      console.log('Iniciando registerFcmToken...');
       const msg = await messaging();
-      if (!msg) return;
+      if (!msg) {
+         console.warn('Firebase messaging indisponível');
+         return;
+      }
       
       const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
       if (!vapidKey) {
@@ -85,14 +89,17 @@ export function DashboardHome() {
       } catch (err) {
         console.warn('Service worker not ready yet', err);
       }
+      console.log('Chamando getToken()...');
       const currentToken = await getToken(msg, { 
         vapidKey,
         serviceWorkerRegistration: registration 
       });
+      console.log('Resultado do getToken:', currentToken ? 'Token obtido (ocultado)' : 'Vazio/Nulo');
+      
       if (currentToken) {
         // Send to backend
         const tokenStr = localStorage.getItem('token');
-        await fetch('/api/user/fcm-token', {
+        const fcmRes = await fetch('/api/user/fcm-token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -100,12 +107,12 @@ export function DashboardHome() {
           },
           body: JSON.stringify({ token: currentToken })
         });
-        console.log('FCM token registered.');
+        console.log('FCM token salvo no backend. Status:', fcmRes.status);
       } else {
         console.log('No registration token available. Request permission to generate one.');
       }
     } catch (err) {
-      console.log('An error occurred while retrieving token. ', err);
+      console.error('An error occurred while retrieving token:', err);
     }
   };
 
@@ -859,6 +866,7 @@ export function DashboardHome() {
                  {notificationPerm !== 'granted' && (
                    <Button 
                      onClick={async () => {
+                       console.log('Valor atual de Notification.permission antes do clique:', Notification.permission);
                        if (!('Notification' in window)) {
                          notifyError('Navegador não suporta notificações.');
                          return;
@@ -868,8 +876,9 @@ export function DashboardHome() {
                          return;
                        }
                        const p = await Notification.requestPermission();
+                       console.log('Valor de Notification.permission após request:', p);
                        setNotificationPerm(p);
-                       if (p === 'granted') notifySuccess('Notificações ativadas!');
+                       if (p === 'granted') notifySuccess('Notificações ativadas! (Nota: isso apenas mostra que a permissão foi dada no browser)');
                      }} 
                      variant="outline" 
                      className="border-amber-500/50 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 h-9 px-3 shrink-0"
