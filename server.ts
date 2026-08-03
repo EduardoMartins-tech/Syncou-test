@@ -1351,7 +1351,10 @@ app.post('/api/provider/:slug/book', bookingLimiter.middleware(), async (req, re
       const fcmTokensRes = await pool.query('SELECT token FROM fcm_tokens WHERE provider_id = $1', [providerId]);
       const tokens = fcmTokensRes.rows.map((r: any) => r.token);
       
+      console.log(`Iniciando envio de push para provider ${providerId}, tokens encontrados: ${tokens.length}`);
       const adminApp = getFirebaseAdmin();
+      if (!adminApp) console.log("Firebase adminApp não inicializado!");
+      
       if (adminApp && tokens.length > 0) {
         const message = {
           data: {
