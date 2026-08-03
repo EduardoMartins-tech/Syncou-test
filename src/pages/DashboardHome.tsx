@@ -73,8 +73,8 @@ export function DashboardHome() {
       console.log('Iniciando registerFcmToken...');
       const msg = await messaging();
       if (!msg) {
-         console.warn('Firebase messaging indisponível');
-         return;
+        console.warn('Firebase messaging indisponível');
+        return;
       }
       
       const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
@@ -82,19 +82,50 @@ export function DashboardHome() {
         console.warn('VITE_FIREBASE_VAPID_KEY is not set');
         return;
       }
+
+      if (!('serviceWorker' in navigator)) {
+        console.warn('Service Worker não suportado neste navegador');
+        return;
+      }
       
-      let registration;
+      let registration: ServiceWorkerRegistration | undefined;
       try {
         registration = await navigator.serviceWorker.ready;
       } catch (err) {
-        console.warn('Service worker not ready yet', err);
+        console.warn('Erro ao aguardar serviceWorker.ready:', err);
       }
+
+      // Verifica se o Service Worker está ativo com sistema de retry de até 12 tentativas (6 segundos)
+      let attempts = 0;
+      const maxAttempts = 12;
+      while (registration && (!registration.active || registration.active.state !== 'activated') && attempts < maxAttempts) {
+        console.log(`[FCM] ServiceWorker ainda não ativo (tentativa ${attempts + 1}/${maxAttempts}). Estado:`, {
+          installing: registration.installing ? registration.installing.state : null,
+          waiting: registration.waiting ? registration.waiting.state : null,
+          active: registration.active ? registration.active.state : null,
+          controller: navigator.serviceWorker.controller ? 'presente' : 'ausente'
+        });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        attempts++;
+
+        const regs = await navigator.serviceWorker.getRegistrations();
+        if (regs.length > 0) {
+          registration = regs.find(r => r.active && r.active.state === 'activated') || regs[0];
+        }
+      }
+
+      console.log('[FCM] Estado do SW antes do getToken():', {
+        hasActive: !!registration?.active,
+        activeState: registration?.active?.state,
+        controller: navigator.serviceWorker.controller ? 'presente' : 'ausente'
+      });
+
       console.log('Chamando getToken()...');
       const currentToken = await getToken(msg, { 
         vapidKey,
         serviceWorkerRegistration: registration 
       });
-      console.log('Resultado do getToken:', currentToken ? 'Token obtido (ocultado)' : 'Vazio/Nulo');
+      console.log('Resultado do getToken:', currentToken ? 'Token obtido com sucesso' : 'Vazio/Nulo');
       
       if (currentToken) {
         // Send to backend
