@@ -44,89 +44,98 @@ async function setupEmail() {
 }
 setupEmail().catch(console.error);
 
-function setupCronJobs() {
-  // Run daily at 08:00
-
-  // Expire pending appointments older than 24h
-  cron.schedule('0 * * * *', async () => {
-    if (!process.env.DATABASE_URL && !process.env.PGHOST) {
-      if (process.env.NODE_ENV === 'production') {
-        console.error('CRITICAL ERROR: DATABASE_URL is missing in production. Cannot run pending appointments expiration cron job!');
-      }
-      return;
+async function runExpirePendingAppointments() {
+  if (!process.env.DATABASE_URL && !process.env.PGHOST) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL ERROR: DATABASE_URL is missing in production. Cannot run pending appointments expiration cron job!');
     }
-    console.log('Running pending appointments expiration cron job...');
-    try {
-      await pool.query(
-        `UPDATE appointments 
-         SET status = 'Cancelado', cancel_reason = 'Expirado (mais de 24h pendente)'
-         WHERE status = 'Pendente' 
-         AND created_at < NOW() - INTERVAL '24 hours'`
-      );
-    } catch (e) {
-      console.error('Error expiring appointments:', e);
+    return { success: false, reason: 'Database not configured' };
+  }
+  console.log('Running pending appointments expiration cron job...');
+  try {
+    const result = await pool.query(
+      `UPDATE appointments 
+       SET status = 'Cancelado', cancel_reason = 'Expirado (mais de 24h pendente)'
+       WHERE status = 'Pendente' 
+       AND created_at < NOW() - INTERVAL '24 hours'`
+    );
+    return { success: true, expiredCount: result.rowCount || 0 };
+  } catch (e: any) {
+    console.error('Error expiring appointments:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+async function runDailyReminders() {
+  if (!process.env.DATABASE_URL && !process.env.PGHOST) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL ERROR: DATABASE_URL is missing in production. Cannot run daily reminder cron job!');
     }
-  });
+    return { success: false, reason: 'Database not configured' };
+  }
+  console.log('Running daily reminder cron job...');
+  try {
+    if (!transporter) return { success: false, reason: 'Transporter not initialized' };
 
-  cron.schedule('0 8 * * *', async () => {
-    if (!process.env.DATABASE_URL && !process.env.PGHOST) {
-      if (process.env.NODE_ENV === 'production') {
-        console.error('CRITICAL ERROR: DATABASE_URL is missing in production. Cannot run daily reminder cron job!');
-      }
-      return;
-    }
-    console.log('Running daily reminder cron job...');
-    try {
-      if (!transporter) return;
+    const tomorrowStart = new Date();
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
 
-      const tomorrowStart = new Date();
-      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-      tomorrowStart.setHours(0, 0, 0, 0);
+    const tomorrowEnd = new Date();
+    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+    tomorrowEnd.setHours(23, 59, 59, 999);
 
-      const tomorrowEnd = new Date();
-      tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-      tomorrowEnd.setHours(23, 59, 59, 999);
+    const startMs = tomorrowStart.getTime().toString();
+    const endMs = tomorrowEnd.getTime().toString();
 
-      const startMs = tomorrowStart.getTime().toString();
-      const endMs = tomorrowEnd.getTime().toString();
+    const result = await pool.query(
+      `SELECT a.*, u.display_name as provider_name 
+       FROM appointments a 
+       JOIN users u ON a.provider_id = u.id 
+       WHERE a.start_at >= $1 AND a.start_at <= $2 
+       AND a.status != 'cancelled' AND a.status != 'Cancelado'`,
+      [startMs, endMs]
+    );
 
-      const result = await pool.query(
-        `SELECT a.*, u.display_name as provider_name 
-         FROM appointments a 
-         JOIN users u ON a.provider_id = u.id 
-         WHERE a.start_at >= $1 AND a.start_at <= $2 
-         AND a.status != 'cancelled' AND a.status != 'Cancelado'`,
-        [startMs, endMs]
-      );
+    let sentCount = 0;
+    for (const apt of result.rows) {
+      if (apt.client_email) {
+        const dateObj = new Date(Number(apt.start_at));
+        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+        const dateStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
 
-      for (const apt of result.rows) {
-        if (apt.client_email) {
-          const dateObj = new Date(Number(apt.start_at));
-          const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-          const dateStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' });
-
-          try {
-            const info = await transporter.sendMail({
-              from: '"Syncou" <noreply@syncou.app>',
-              to: apt.client_email,
-              subject: `Lembrete de Agendamento: ${apt.provider_name}`,
-              text: `Olá ${apt.client_name},\n\nEste é um lembrete do seu agendamento com ${apt.provider_name} amanhã (${dateStr}) às ${timeStr}.\n\nTe aguardamos!`,
-              html: `<p>Olá <b>${apt.client_name}</b>,</p><p>Este é um lembrete do seu agendamento com <b>${apt.provider_name}</b> amanhã (<b>${dateStr}</b>) às <b>${timeStr}</b>.</p><p>Te aguardamos!</p>`
-            });
-            console.log(`Reminder sent to ${apt.client_email} for appointment ${apt.id}`);
-            const testMessageUrl = nodemailer.getTestMessageUrl(info);
-            if (testMessageUrl) {
-              console.log('Preview URL: %s', testMessageUrl);
-            }
-          } catch (err) {
-            console.error(`Failed to send reminder to ${apt.client_email}: `, err);
+        try {
+          const info = await transporter.sendMail({
+            from: '"Syncou" <noreply@syncou.app>',
+            to: apt.client_email,
+            subject: `Lembrete de Agendamento: ${apt.provider_name}`,
+            text: `Olá ${apt.client_name},\n\nEste é um lembrete do seu agendamento com ${apt.provider_name} amanhã (${dateStr}) às ${timeStr}.\n\nTe aguardamos!`,
+            html: `<p>Olá <b>${apt.client_name}</b>,</p><p>Este é um lembrete do seu agendamento com <b>${apt.provider_name}</b> amanhã (<b>${dateStr}</b>) às <b>${timeStr}</b>.</p><p>Te aguardamos!</p>`
+          });
+          sentCount++;
+          console.log(`Reminder sent to ${apt.client_email} for appointment ${apt.id}`);
+          const testMessageUrl = nodemailer.getTestMessageUrl(info);
+          if (testMessageUrl) {
+            console.log('Preview URL: %s', testMessageUrl);
           }
+        } catch (err) {
+          console.error(`Failed to send reminder to ${apt.client_email}: `, err);
         }
       }
-    } catch (err) {
-      console.error('Error in daily reminder cron job:', err);
     }
-  });
+    return { success: true, sentCount };
+  } catch (err: any) {
+    console.error('Error in daily reminder cron job:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+function setupCronJobs() {
+  // Expire pending appointments older than 24h (every hour)
+  cron.schedule('0 * * * *', () => { runExpirePendingAppointments(); });
+
+  // Daily reminder at 08:00
+  cron.schedule('0 8 * * *', () => { runDailyReminders(); });
 }
 setupCronJobs();
 
@@ -423,6 +432,36 @@ function getFirebaseAdmin() {
 }
 
 // ====== API ROUTES ====== //
+
+const verifyCronSecret = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const cronSecret = process.env.CRON_SECRET;
+  const providedSecret = (req.headers['x-cron-secret'] as string) || (req.headers.authorization ? req.headers.authorization.replace('Bearer ', '') : null);
+
+  if (cronSecret) {
+    if (providedSecret !== cronSecret) {
+      return res.status(401).json({ error: 'Não autorizado. Token de cron inválido ou ausente.' });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'CRON_SECRET não configurado no servidor.' });
+  }
+  next();
+};
+
+app.post('/api/cron/send-reminders', verifyCronSecret, async (req, res) => {
+  const result = await runDailyReminders();
+  if (!result.success) {
+    return res.status(500).json(result);
+  }
+  res.json(result);
+});
+
+app.post('/api/cron/expire-pending', verifyCronSecret, async (req, res) => {
+  const result = await runExpirePendingAppointments();
+  if (!result.success) {
+    return res.status(500).json(result);
+  }
+  res.json(result);
+});
 
 app.post('/api/user/fcm-token', authenticateToken, async (req: any, res: any) => {
   try {
