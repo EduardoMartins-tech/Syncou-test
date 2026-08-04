@@ -15,6 +15,7 @@ import { syncWithGoogleCalendar } from '../lib/calendar';
 import { messaging } from '../lib/firebase';
 import { getToken } from 'firebase/messaging';
 import { googleSignInForCalendar } from '../lib/firebase';
+import { toast } from 'sonner';
 
 interface Service {
   id: string;
@@ -165,7 +166,14 @@ export function DashboardHome() {
             console.log('Foreground message received: ', payload);
             const title = payload.data?.title || payload.notification?.title || 'Notificação';
             const body = payload.data?.body || payload.notification?.body || '';
-            toast(title, { description: body });
+            toast.info(title, { description: body, duration: 6000 });
+            if ('Notification' in window && Notification.permission === 'granted') {
+              try {
+                new Notification(title, { body, icon: '/pwa-192x192.png' });
+              } catch (e) {
+                console.log('Erro ao disparar notificação nativa:', e);
+              }
+            }
           });
         });
       }
