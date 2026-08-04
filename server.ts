@@ -366,10 +366,16 @@ runMigrations();
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.sendStatus(401);
+  if (!token || token === 'null' || token === 'undefined') {
+    console.warn(`[AUTH 401] ${req.method} ${req.path}: Token de autenticação ausente ou inválido no header (${authHeader})`);
+    return res.status(401).json({ error: 'Token de autenticação ausente' });
+  }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) return res.sendStatus(403);
+    if (err) {
+      console.warn(`[AUTH 403] ${req.method} ${req.path}: Falha na validação do JWT - ${err.name}: ${err.message}. Token recebido: ${token.substring(0, 20)}...`);
+      return res.status(403).json({ error: `Acesso negado: ${err.message}`, code: err.name });
+    }
     req.user = user;
     next();
   });
@@ -423,14 +429,16 @@ app.post('/api/user/fcm-token', authenticateToken, async (req: any, res: any) =>
     const { token } = req.body;
     if (!token) return res.status(400).json({ error: 'Token is required' });
     
+    console.log(`[FCM-TOKEN] Salvando FCM token para o providerId: ${req.user.id}`);
     await pool.query(
       'INSERT INTO fcm_tokens (provider_id, token) VALUES ($1, $2) ON CONFLICT (token) DO UPDATE SET provider_id = EXCLUDED.provider_id',
       [req.user.id, token]
     );
+    console.log(`[FCM-TOKEN] FCM token salvo com sucesso no PostgreSQL para providerId: ${req.user.id}`);
     res.json({ success: true });
   } catch (e: any) {
-    console.error('Error saving FCM token:', e);
-    res.status(500).json({ error: 'Error saving token' });
+    console.error('[FCM-TOKEN] Erro ao salvar FCM token:', e);
+    res.status(500).json({ error: 'Error saving token', details: e.message });
   }
 });
 

@@ -130,15 +130,18 @@ export function DashboardHome() {
       if (currentToken) {
         // Send to backend
         const tokenStr = localStorage.getItem('token');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(getAuthHeaders ? getAuthHeaders() : { 'Authorization': `Bearer ${tokenStr}` })
+        };
+        console.log('[FCM] Enviando FCM token para /api/user/fcm-token. Header auth:', headers['Authorization'] ? `${headers['Authorization'].substring(0, 20)}...` : 'AUSENTE');
         const fcmRes = await fetch('/api/user/fcm-token', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokenStr}`
-          },
+          headers,
           body: JSON.stringify({ token: currentToken })
         });
-        console.log('FCM token salvo no backend. Status:', fcmRes.status);
+        const fcmData = await fcmRes.json().catch(() => ({}));
+        console.log('FCM token salvo no backend. Status:', fcmRes.status, 'Resposta:', fcmData);
       } else {
         console.log('No registration token available. Request permission to generate one.');
       }
