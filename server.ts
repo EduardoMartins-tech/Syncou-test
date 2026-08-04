@@ -154,7 +154,9 @@ app.use(helmet({
         "https://www.gstatic.com",
         "https://fcmregistrations.googleapis.com",
         "https://fcm.googleapis.com",
-        "https://*.firebase.com"
+        "https://firebaseinstallations.googleapis.com",
+        "https://*.firebase.com",
+        "https://*.googleapis.com"
       ],
       frameSrc: ["'self'", "https://js.stripe.com", "https://accounts.google.com", "https://*.firebaseapp.com", "https://www.google.com", "https://www.gstatic.com"],
       mediaSrc: ["'self'", "https://assets.mixkit.co"],
